@@ -1,0 +1,47 @@
+{
+  "tracks": {
+    "light_tracks": {
+      "speed": 4.0,
+      "turn_rate": 3.5
+    },
+    "heavy_tracks": {
+      "speed": 2.5,
+      "turn_rate": 2.0
+    }
+  },
+
+  "armor": {
+    "light_armor": {
+      "hp": 100,
+      "speed_penalty": 1.0
+    },
+    "heavy_armor": {
+      "hp": 200,
+      "speed_penalty": 0.75
+    }
+  },
+
+  "sights": {
+    "standard_sight": {
+      "range": 8
+    },
+    "long_range_sight": {
+      "range": 14
+    }
+  },
+
+  "barrels": {
+    "standard_barrel": {
+      "damage": 20,
+      "bullet_speed": 8,
+      "reload": 1.0,
+      "special": "none"
+    },
+    "ricochet_barrel": {
+      "damage": 15,
+      "bullet_speed": 7,
+      "reload": 1.2,
+      "special": "bounce"
+    }
+  }
+}

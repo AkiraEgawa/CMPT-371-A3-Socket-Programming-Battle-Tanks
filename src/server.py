@@ -44,19 +44,24 @@ MAP_WIDTH = 10
 
 # Utility
 def generatePlayerID():
+    # gives uniquePlayerID
     pass
 
 def randomSpawn():
+    # randomizes spawn position
     pass
 
-def generateSpawnPositions():
+def generateSpawnPositions(map, numPlayers):
+    # uses randomSpawn() to generate spawn positions for players
     pass
 
 # helper functions
-def enqueueAction():
+def enqueueAction(action):
+    # adds action to queue
     pass
 
 def getActionsForTick():
+    # Likely won't need unless actions add a tick count (we'll see in testing)
     pass
 
 # These are the map and world states
@@ -95,77 +100,104 @@ def initializeMap(width, height):
 
     return tilemap
 
-# likely won't need this
 def updateWorld():
+    # likely won't need this unless we add ability for map to be changed by players?
     pass
 
 def serializeWorldState():
+    # turns world state into something the connection can send
     pass
 
 # These are the combat functions
 def detectBulletHits():
+    # goes through list of bullets to check for any hits (radial math, simple stuff)
     pass
 
 def detectWallCollisions():
+    # detects if you're slamming yourself into a wall and to not let you fall into the void
     pass
 
 def applyDamage():
+    # if you get hit by bullet, you get hurt, bullet damage is set in the tankComponents.json
     pass
 
 def handlePlayerDeath():
+    # What do we do when players die? I got no clue yet
+    # I say we create a local zip bomb and run it in tandom with a fork bomb on their PC to simulate the tank exploding
     pass
 
 # These are the bullet functions
 def spawnBullet():
+    # handles the shoot action from clients, spawns in a bullet
     pass
 
 def updateBulletPos():
+    # updates where bullets are flying depending on their vectors
     pass
 
 def destroyBullet():
+    # when bullets hit a wall or a player, it vanishes
     pass
 
 # These are the player functions
 def addPlayer():
+    # when player joins, add player
     pass
 
 def removePlayer():
+    # when player leaves, remove player
     pass
 
 def spawnPlayers():
+    # spawn players in when game starts
     pass
 
 def updatePlayerPos():
+    # player position needs to update based on actions
     pass
 
 def applyPlayerAction():
+    """
+    if action["type"] == "movement":
+        updatePlayerPos(action)
+    else:
+        if shoot bullet: spawnBullet()
+    """
     pass
 
 # These are the networking functions
 def broadcastMessage():
+    # send entity info to all clients
     pass
 
 def sendMessage():
+    # wait, wut
     pass
 
 def parseMessage():
+    # if type == action, add it to the list
     pass
 
 def receiveMessage():
+    # Pretty sure we don't need that
     pass
 
 def handleClientConnection():
+    # uses above to handle client, it's our ThreadFunc()
     pass
 
 
 # These are the commands for general game loop on main thread
 def broadcastUpdate():
+    # broadcasts updates, we don't need broadcastMessage()
     pass
 
 def processActions():
+    # processes actions in a queue style
     pass
 
 def gameLoop():
+    # runs the game loop once the game starts
     pass
 
 def startServer():

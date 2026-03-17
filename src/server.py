@@ -3,6 +3,10 @@ from pathlib import Path
 import socket
 import threading
 import random
+from dataclasses import dataclass, field
+from typing import List, Tuple
+
+
 BASE_DIR = Path(__file__).resolve().parent
 
 HOST = '127.0.0.1'
@@ -10,6 +14,30 @@ PORT = 5050
 
 TICK_SPEED = 50
 TICK_DELAY = 1/TICK_SPEED
+
+@dataclass
+class PlayerParts:
+    id: int
+    parts: List[str]
+
+@dataclass
+class Player:
+  id: int
+  position: Tuple[float, float]
+  rotation: float
+  health: float = 100.0 # this value can change, depending on parts (will write a script to determine it)
+
+@dataclass
+class Shell:
+  id: int
+  shell_type: str
+  position: Tuple[float, float]
+  velocity: Tuple[float, float]
+
+@dataclass
+class EntityList:
+  players: List[Player] = field(default_factory = list)
+  shells: List[Shell] = field(default_factory = list)
 
 MAP_HEIGHT = 10
 MAP_WIDTH = 10
@@ -140,8 +168,47 @@ def processActions():
 def gameLoop():
     pass
 
-def runServer():
+def startServer():
+    """
+    Main server event loop. This is basically our main function
+    """
+
+    # Let's initialize our sockets
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind((HOST, PORT))
+    server.listen()
+
+    server.settimeout(1.0)
+
+    print(f"[STARTING] Server is listening on {HOST}:{PORT}")
+
+    try:
+        while True:
+            try:
+                conn, addr = server.accept()
+                data = conn.recv(1024).decode('utf-8')
+
+                # Protocol: let's shake hands
+                if "CONNECT" in data:
+                    addPlayer()
+            
+            except socket.timeout:
+                continue
+            
+    except KeyboardInterrupt:
+        # Graceful shutdown
+        print("\n [SHUTDOWN] Server is closing...")
+
+    finally:
+        server.close()
+
+
+if __name__ == "__main__":
+    startServer()
+    # startServer() is blocking until CTRL + C is pressed, please keep uncommented unless testing
     pass
+
+# Everything under here is for testing purposes
 
 print("Hello World: This is server")
 

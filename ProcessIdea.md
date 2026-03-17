@@ -19,10 +19,10 @@ Hello to readers: This is what I've gotten so far for how the program will work
     6. State
         1. Game Start
         2. Game End: comes with winner
-2. Content, contains whatever content is needed
-  1. Map: contains map in 2d array, client displays it using a spritemap (easy)
-  2. Action: 1d array of button inputs every tick or 2 tick?
-  3. Update: contains map with player and enemy data
-  4. Leave: no content
-  5. Shutdown: no content
-  6. State: no content
+2. Content: contains whatever content is needed
+    1. Map: contains map in 2d array, client displays it using a spritemap (easy)
+    2. Action: 1d array of button inputs every tick or 2 tick?
+    3. Update: contains map with player and enemy data
+    4. Leave: no content
+    5. Shutdown: no content
+    6. State: no content

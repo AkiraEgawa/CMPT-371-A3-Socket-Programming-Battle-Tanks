@@ -62,6 +62,7 @@ MAP_WIDTH = 10
 
 parts_registry = {} # {player_id: PlayerParts} Sent at start
 active_players = {} # {player_id: Player} Sent every tick
+world_shells = [] # list of shells
 
 # Utility
 
@@ -147,9 +148,31 @@ def handlePlayerDeath():
     pass
 
 # These are the bullet functions
-def spawnBullet():
+def spawnBullet(player_id: int):
     # handles the shoot action from clients, spawns in a bullet
-    pass
+    player = active_players.get(player_id)
+    static_data = parts_registry.get(player_id)
+    if not player:
+        return
+    
+    barrel_type = static_data.parts.barrels
+    barrel_stats = COMPONENTS["barrels"][barrel_type]
+
+    BULLET_SPEED = barrel_stats["bullet_speed"]
+
+    rad = math.radians(player.rotation)
+    vx = math.cos(rad) * BULLET_SPEED
+    vy = math.sin(rad) * BULLET_SPEED
+
+    new_shell = Shell(
+        id = random.randint(0, 999999),
+        shell_type = barrel_type,
+        position = player.position,
+        velocity = (vx,vy)
+    )
+
+    world_shells.append(new_shell)
+    print(f"[COMBAT] Player {player_id} fired a {barrel_type} shell")
 
 def updateBulletPos():
     # updates where bullets are flying depending on their vectors
@@ -199,13 +222,13 @@ def updatePlayerPos():
 
 def applyPlayerAction(player_id: int, action: dict):
     player = active_players.get(player_id)
+    static_data = parts_registry.get(player_id)
     if not player:
         return # player left after sending action, before processing
     
-    parts = parts_registry.get(player_id)
-    tracks = parts["parts"]["tracks"]
-    MOVE_SPEED = COMPONENTS["tracks"][tracks]["speed"]
-    ROTATION_SPEED = COMPONENTS["tracks"][tracks]["turn_rate"]
+    track_type = static_data.parts.tracks
+    MOVE_SPEED = COMPONENTS["tracks"][track_type]["speed"]
+    ROTATION_SPEED = COMPONENTS["tracks"][track_type]["turn_rate"]
 
     keys = action.get("keys", [])
 
@@ -320,9 +343,7 @@ def startServer():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.bind((HOST, PORT))
     server.listen()
-
     server.settimeout(1.0)
-
     print(f"[STARTING] Server is listening on {HOST}:{PORT}")
 
     # 1. Start game loop in seperate thread (kinda hard to run on main)
@@ -340,10 +361,6 @@ def startServer():
                     daemon = True
                 )
                 client_thread.start()
-
-                # Protocol: let's shake hands
-                if "CONNECT" in data:
-                    addPlayer()
             
             except socket.timeout:
                 continue

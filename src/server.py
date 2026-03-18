@@ -3,22 +3,38 @@ from pathlib import Path
 import socket
 import threading
 import random
+import queue
 from dataclasses import dataclass, field
 from typing import List, Tuple
-
 
 BASE_DIR = Path(__file__).resolve().parent
 
 HOST = '127.0.0.1'
 PORT = 5050
 
-TICK_SPEED = 50
+tankComponents_path = BASE_DIR / "config" / "tankComponents.json"
+
+with open(tankComponents_path) as f:
+    COMPONENTS = json.load(f)
+
+config_path = BASE_DIR / "config" / "config.json"
+
+with open(config_path) as f:
+    config = json.load(f)
+TICK_SPEED = config["settings"]["tick_speed"]
 TICK_DELAY = 1/TICK_SPEED
+
+@dataclass
+class TankParts:
+    tracks: str
+    armor: str
+    sights: str
+    barrels: str
 
 @dataclass
 class PlayerParts:
     id: int
-    parts: List[str]
+    parts: TankParts
 
 @dataclass
 class Player:
@@ -43,9 +59,15 @@ MAP_HEIGHT = 10
 MAP_WIDTH = 10
 
 # Utility
+
+_player_id_counter = 0
+_id_lock = threading.Lock()
 def generatePlayerID():
     # gives uniquePlayerID
-    pass
+    global _player_id_counter
+    with _id_lock:
+        _player_id_counter += 1
+        return _player_id_counter
 
 def randomSpawn():
     # randomizes spawn position
@@ -140,9 +162,35 @@ def destroyBullet():
     pass
 
 # These are the player functions
-def addPlayer():
+
+parts_registry = {} # {player_id: PlayerParts} Sent at start
+active_players = {} # {player_id: Player} Sent every tick
+
+def _statCalculation(tankParts):
+    armor = tankParts["armor"]
+    hp = COMPONENTS["armor"][armor]["hp"]
+    return hp
+
+def addPlayer(tankParts):
     # when player joins, add player
-    pass
+    new_id = generatePlayerID()
+    tank_parts = TankParts(**tankParts)
+    static_data = PlayerParts(id=new_id, parts = tank_parts)
+
+    # create dynamic dataclass
+    dynamic_data = Player(
+        id = new_id,
+        position = (random.uniform(0, MAP_WIDTH), random.uniform(0, MAP_HEIGHT)),
+        rotation = 0.0,
+        health = _statCalculation(tankParts)
+    )
+
+    # store them
+    parts_registry[new_id] = static_data
+    active_players[new_id] = dynamic_data
+
+    print(f"[REGISTERED] Player {new_id} parts stored")
+    return new_id
 
 def removePlayer():
     # when player leaves, remove player

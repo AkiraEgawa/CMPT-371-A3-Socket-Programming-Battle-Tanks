@@ -4,6 +4,8 @@ import socket
 import threading
 import random
 import queue
+import time
+import math
 from dataclasses import dataclass, field
 from typing import List, Tuple
 
@@ -58,6 +60,9 @@ class EntityList:
 MAP_HEIGHT = 10
 MAP_WIDTH = 10
 
+parts_registry = {} # {player_id: PlayerParts} Sent at start
+active_players = {} # {player_id: Player} Sent every tick
+
 # Utility
 
 _player_id_counter = 0
@@ -80,10 +85,6 @@ def generateSpawnPositions(map, numPlayers):
 # helper functions
 def enqueueAction(action):
     # adds action to queue
-    pass
-
-def getActionsForTick():
-    # Likely won't need unless actions add a tick count (we'll see in testing)
     pass
 
 # These are the map and world states
@@ -122,9 +123,6 @@ def initializeMap(width, height):
 
     return tilemap
 
-def updateWorld():
-    # likely won't need this unless we add ability for map to be changed by players?
-    pass
 
 def serializeWorldState():
     # turns world state into something the connection can send
@@ -163,8 +161,7 @@ def destroyBullet():
 
 # These are the player functions
 
-parts_registry = {} # {player_id: PlayerParts} Sent at start
-active_players = {} # {player_id: Player} Sent every tick
+
 
 def _statCalculation(tankParts):
     armor = tankParts["armor"]
@@ -196,43 +193,86 @@ def removePlayer():
     # when player leaves, remove player
     pass
 
-def spawnPlayers():
-    # spawn players in when game starts
-    pass
-
 def updatePlayerPos():
     # player position needs to update based on actions
     pass
 
-def applyPlayerAction():
-    """
-    if action["type"] == "movement":
-        updatePlayerPos(action)
-    else:
-        if shoot bullet: spawnBullet()
-    """
-    pass
+def applyPlayerAction(player_id: int, action: dict):
+    player = active_players.get(player_id)
+    if not player:
+        return # player left after sending action, before processing
+    
+    parts = parts_registry.get(player_id)
+    tracks = parts["parts"]["tracks"]
+    MOVE_SPEED = COMPONENTS["tracks"][tracks]["speed"]
+    ROTATION_SPEED = COMPONENTS["tracks"][tracks]["turn_rate"]
+
+    keys = action.get("keys", [])
+
+    # Get rotated
+    if "A" in keys:
+        player.rotation -= ROTATION_SPEED
+    if "D" in keys:
+        player.rotation += ROTATION_SPEED
+    
+    player.rotation %= 360 # Cuz rotation is technically a ring of size 360
+
+    # math is stupid, we think in degrees, but computers use radians
+    rad = math.radians(player.rotation)
+
+    move_dir = 0
+    if "W" in keys: move_dir = 1
+    elif "S" in keys: move_dir = -1
+
+    if move_dir != 0:
+        new_x = player.position[0] + (math.cos(rad) * MOVE_SPEED * move_dir)
+        new_y = player.position[1] + (math.sin(rad) * MOVE_SPEED * move_dir)
+
+        if 0 <= new_x <= MAP_WIDTH and 0 <= new_y <= MAP_HEIGHT:
+            player.position = (new_x, new_y)
+
+    if "SPACE" in keys:
+        spawnBullet(player_id)
 
 # These are the networking functions
 def broadcastMessage():
     # send entity info to all clients
     pass
 
-def sendMessage():
-    # wait, wut
-    pass
-
 def parseMessage():
     # if type == action, add it to the list
     pass
 
-def receiveMessage():
-    # Pretty sure we don't need that
-    pass
+def handleClientConnection(conn, addr):
+    """
+    dedicated thread for each player.
+    It just listens for JSON and puts it into action_queue if necessary
+    """
+    player_id = None
+    try:
+        while True:
+            raw_data = conn.recv(2048).decode('utf-8')
+            if not raw_data: break # client died
 
-def handleClientConnection():
-    # uses above to handle client, it's our ThreadFunc()
-    pass
+            message = json.loads(raw_data)
+
+            if message["type"] == "CONNECT":
+                player_id = addPlayer(message["oontent"])
+                clients[player_id] = conn
+
+                conn.send(json.dumps({"type": "ACCEPTED", "id": player_id}).encode())
+
+            elif message["type"] == "ACTION":
+                action_queue.put((player_id, message["content"]))
+
+            elif message["type"] == "LEAVE":
+                break # player has left us
+        
+    finally:
+        if player_id:
+            removePlayer(player_id)
+            del clients[player_id]
+        conn.close()
 
 
 # These are the commands for general game loop on main thread
@@ -245,8 +285,31 @@ def processActions():
     pass
 
 def gameLoop():
-    # runs the game loop once the game starts
-    pass
+    print("[RUNNING] Game logic thread started")
+    while True:
+        start_time = time.time()
+
+        # there's stuff in queue
+        while not action_queue.empty():
+            pid, action = action_queue.get()
+            applyPlayerAction(pid, action)
+        
+        updateBulletPos()
+        detectBulletHits()
+        detectWallCollisions()
+
+        world_state = serializeWorldState()
+        for pid, conn in clients.items():
+            try:
+                conn.send(world_state.encode())
+            except:
+                pass # broken pipe
+
+        sleep_time = TICK_DELAY - (time.time() - start_time) # find time it took to do the math and stuff
+        if sleep_time > 0: # if this consistently fails, we're cooked
+            time.sleep(sleep_time)
+action_queue = queue.Queue()
+clients = {}
 
 def startServer():
     """
@@ -262,11 +325,21 @@ def startServer():
 
     print(f"[STARTING] Server is listening on {HOST}:{PORT}")
 
+    # 1. Start game loop in seperate thread (kinda hard to run on main)
+    game_thread = threading.Thread(target=gameLoop, daemon=True)
+    game_thread.start()
+
     try:
         while True:
             try:
                 conn, addr = server.accept()
-                data = conn.recv(1024).decode('utf-8')
+
+                client_thread = threading.Thread(
+                    target = handleClientConnection,
+                    args = (conn, addr),
+                    daemon = True
+                )
+                client_thread.start()
 
                 # Protocol: let's shake hands
                 if "CONNECT" in data:

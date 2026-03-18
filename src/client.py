@@ -20,7 +20,7 @@ TICK_DELAY = 1/TICK_SPEED
 @dataclass
 class TankParts:
     tracks: str
-    armour: str
+    armor: str
     sights: str
     barrels: str
 

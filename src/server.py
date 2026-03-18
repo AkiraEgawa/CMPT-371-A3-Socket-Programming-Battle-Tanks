@@ -372,23 +372,5 @@ def startServer():
     finally:
         server.close()
 
-
 if __name__ == "__main__":
     startServer()
-    # startServer() is blocking until CTRL + C is pressed, please keep uncommented unless testing
-    pass
-
-# Everything under here is for testing purposes
-
-print("Hello World: This is server")
-
-tankComponents_path = BASE_DIR / "config" / "tankComponents.json"
-
-with open(tankComponents_path) as f:
-    COMPONENTS = json.load(f)
-
-print(COMPONENTS)
-
-map = initializeMap(MAP_HEIGHT, MAP_WIDTH)
-for row in map:
-    print(" ".join(str(tile) for tile in row))

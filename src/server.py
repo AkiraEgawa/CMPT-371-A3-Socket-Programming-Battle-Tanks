@@ -176,15 +176,23 @@ def spawnBullet(player_id: int):
 
 def updateBulletPos():
     # updates where bullets are flying depending on their vectors
-    pass
+    # this updates all bullets in world_shells
+    for shell in world_shells:
+        vx = shell.velocity[0]
+        vy = shell.velocity[1]
+        shell.position[0] += vx
+        shell.position[1] += vy
 
 def destroyBullet():
     # when bullets hit a wall or a player, it vanishes
+    for shell in world_shells:
+        x = shell.position[0]
+        y = shell.position[1]
+        if x < 0 or x > MAP_WIDTH or y < 0 or y > MAP_HEIGHT:
+            pass # we don't need this function, put the mechanic into bullet pos
     pass
 
 # These are the player functions
-
-
 
 def _statCalculation(tankParts):
     armor = tankParts["armor"]

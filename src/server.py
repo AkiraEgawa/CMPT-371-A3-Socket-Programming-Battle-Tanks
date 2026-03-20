@@ -6,7 +6,7 @@ import random
 import queue
 import time
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 from typing import List, Tuple
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -126,29 +126,84 @@ def initializeMap(width, height):
 
 
 def serializeWorldState():
+    global world_shells
     # turns world state into something the connection can send
-    pass
+    state = {
+        "type": "UPDATE",
+        "players": [],
+        "shells": []
+    }
+
+    for pid, player in active_players.items():
+        state["players"].append({
+            "id": player.id,
+            "pos": player.position,
+            "rot": player.rotation,
+            "hp": player.health
+        })
+    
+    for shell in world_shells:
+        state["shells"].append({
+            "id": shell.id,
+            "pos": shell.position,
+            "type": shell.shell_type
+        })
+    
+    return json.dumps(state)
 
 # These are the combat functions
 def detectBulletHits():
     # goes through list of bullets to check for any hits (radial math, simple stuff)
-    pass
+    global world_shells
+    remaining_shells = []
+    HIT_RADIUS = 0.5
 
-def detectWallCollisions():
-    # detects if you're slamming yourself into a wall and to not let you fall into the void
-    pass
+    for shell in world_shells:
+        hit_something = False
 
-def applyDamage():
+        for pid, player in active_players.items():
+            # for each player, check if in radius
+            dist = math.sqrt(
+                (shell.position[0] - player.position[0])**2 +
+                (shell.position[1] - player.position[1])**2
+            )
+    
+            # if in radius, break from loop, say we hit something and apply damage
+            if dist < HIT_RADIUS:
+                print(f"[HIT] Player {pid} was struck by Shell {shell.id}!")
+                applyDamage(pid, shell.shell_type)
+                hit_something = True
+                break
+        
+        # if shell isn't hitting, keep moving
+        if not hit_something:
+            remaining_shells.append(shell)
+    
+    world_shells[:] = remaining_shells
+
+def applyDamage(pid, shell_type):
     # if you get hit by bullet, you get hurt, bullet damage is set in the tankComponents.json
+    player = active_players.get(pid)
+
+    if player:
+        damage = COMPONENTS["barrels"][shell_type]["damage"]
+        player.health -= damage
+        print(f"[DAMAGE] Player {pid} hit! Health: {player.health}")
+
+        if player.health <= 0:
+            handlePlayerDeath(pid)
     pass
 
-def handlePlayerDeath():
+def handlePlayerDeath(pid):
+    global active_players
     # What do we do when players die? I got no clue yet
-    # I say we create a local zip bomb and run it in tandom with a fork bomb on their PC to simulate the tank exploding
-    pass
+    if pid in active_players:
+        print(f"[DEATH] Player {pid} has been destroyed!")
+        del active_players[pid]
 
 # These are the bullet functions
 def spawnBullet(player_id: int):
+    global world_shells
     # handles the shoot action from clients, spawns in a bullet
     player = active_players.get(player_id)
     static_data = parts_registry.get(player_id)
@@ -175,22 +230,26 @@ def spawnBullet(player_id: int):
     print(f"[COMBAT] Player {player_id} fired a {barrel_type} shell")
 
 def updateBulletPos():
+    global world_shells
+    remaining_shells = []
     # updates where bullets are flying depending on their vectors
     # this updates all bullets in world_shells
     for shell in world_shells:
-        vx = shell.velocity[0]
-        vy = shell.velocity[1]
-        shell.position[0] += vx
-        shell.position[1] += vy
+        vx, vy = shell.velocity
+        curr_x, curr_y = shell.position
 
-def destroyBullet():
-    # when bullets hit a wall or a player, it vanishes
-    for shell in world_shells:
-        x = shell.position[0]
-        y = shell.position[1]
-        if x < 0 or x > MAP_WIDTH or y < 0 or y > MAP_HEIGHT:
-            pass # we don't need this function, put the mechanic into bullet pos
-    pass
+        # find new position
+        new_x = curr_x + vx
+        new_y = curr_y + vy
+
+        # check map boundaries
+        if 0 <= new_x <= MAP_WIDTH and 0 <= new_y <= MAP_HEIGHT:
+            shell.position = (new_x,new_y)
+            remaining_shells.append(shell)
+        else:
+            print(f"[COMBAT] Shell {shell.id} dissipated at bounds")
+        
+    world_shells[:] = remaining_shells
 
 # These are the player functions
 
@@ -220,9 +279,13 @@ def addPlayer(tankParts):
     print(f"[REGISTERED] Player {new_id} parts stored")
     return new_id
 
-def removePlayer():
+def removePlayer(pid):
     # when player leaves, remove player
-    pass
+    if pid in active_players:
+        del active_players[pid]
+    if pid in parts_registry:
+        del parts_registry[pid]
+    print(f"[DISCONNECT] Player {pid} removed from server.")
 
 def updatePlayerPos():
     # player position needs to update based on actions
@@ -288,7 +351,7 @@ def handleClientConnection(conn, addr):
             message = json.loads(raw_data)
 
             if message["type"] == "CONNECT":
-                player_id = addPlayer(message["oontent"])
+                player_id = addPlayer(message["content"])
                 clients[player_id] = conn
 
                 conn.send(json.dumps({"type": "ACCEPTED", "id": player_id}).encode())
@@ -307,10 +370,6 @@ def handleClientConnection(conn, addr):
 
 
 # These are the commands for general game loop on main thread
-def broadcastUpdate():
-    # broadcasts updates, we don't need broadcastMessage()
-    pass
-
 def processActions():
     # processes actions in a queue style
     pass
@@ -327,7 +386,6 @@ def gameLoop():
         
         updateBulletPos()
         detectBulletHits()
-        detectWallCollisions()
 
         world_state = serializeWorldState()
         for pid, conn in clients.items():

@@ -64,6 +64,8 @@ parts_registry = {} # {player_id: PlayerParts} Sent at start
 active_players = {} # {player_id: Player} Sent every tick
 world_shells = [] # list of shells
 
+shutdown_event = threading.Event()
+
 # Utility
 
 _player_id_counter = 0
@@ -287,6 +289,10 @@ def removePlayer(pid):
         del parts_registry[pid]
     print(f"[DISCONNECT] Player {pid} removed from server.")
 
+    if len(active_players) == 0:
+        print(f"[SERVER] Zero players remaining. Initializing auto-shutdown...")
+        shutdown_event.set()
+
 def updatePlayerPos():
     # player position needs to update based on actions
     pass
@@ -417,7 +423,7 @@ def startServer():
     game_thread.start()
 
     try:
-        while True:
+        while not shutdown_event.is_set():
             try:
                 conn, addr = server.accept()
 

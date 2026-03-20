@@ -26,6 +26,9 @@ with open(config_path) as f:
 TICK_SPEED = config["settings"]["tick_speed"]
 TICK_DELAY = 1/TICK_SPEED
 
+MAP_HEIGHT = config["settings"]["MAX_HEIGHT"]
+MAP_WIDTH = config["settings"]["MAX_WIDTH"]
+
 @dataclass
 class TankParts:
     tracks: str
@@ -57,14 +60,15 @@ class EntityList:
   players: List[Player] = field(default_factory = list)
   shells: List[Shell] = field(default_factory = list)
 
-MAP_HEIGHT = 10
-MAP_WIDTH = 10
+
 
 parts_registry = {} # {player_id: PlayerParts} Sent at start
 active_players = {} # {player_id: Player} Sent every tick
 world_shells = [] # list of shells
 
 shutdown_event = threading.Event()
+
+game_started = False
 
 # Utility
 
@@ -343,6 +347,28 @@ def parseMessage():
     # if type == action, add it to the list
     pass
 
+def startGame():
+    global game_started
+    game_started = True
+
+    tilemap = initializeMap(MAP_WIDTH, MAP_HEIGHT)
+
+    initial_sync = {
+        "type": "GAME_START",
+        "content": {
+            "map": tilemap,
+            "registry": {pid: asdict(p.parts) for pid, p in parts_registry.items()},
+            "dimensions": {"width": MAP_WIDTH, "height": MAP_HEIGHT}
+        }
+    }
+
+    message_bytes = json.dumps(initial_sync).encode('utf-8')
+    for pid, conn in clients.items():
+        try: 
+            conn.send(message_bytes)
+        except Exception as e:
+            print(f"[ERROR] Failed to send start sync to Player {pid}: {e}")
+
 def handleClientConnection(conn, addr):
     """
     dedicated thread for each player.
@@ -365,6 +391,11 @@ def handleClientConnection(conn, addr):
             elif message["type"] == "ACTION":
                 action_queue.put((player_id, message["content"]))
 
+            elif message["type"] == "START":
+                global game_started
+                if not game_started:
+                    print("[SERVER] Start signal received! Initializing match...")
+                    startGame()
             elif message["type"] == "LEAVE":
                 break # player has left us
         
@@ -385,20 +416,21 @@ def gameLoop():
     while True:
         start_time = time.time()
 
-        # there's stuff in queue
-        while not action_queue.empty():
-            pid, action = action_queue.get()
-            applyPlayerAction(pid, action)
-        
-        updateBulletPos()
-        detectBulletHits()
+        if game_started:
+            # there's stuff in queue
+            while not action_queue.empty():
+                pid, action = action_queue.get()
+                applyPlayerAction(pid, action)
+            
+            updateBulletPos()
+            detectBulletHits()
 
-        world_state = serializeWorldState()
-        for pid, conn in clients.items():
-            try:
-                conn.send(world_state.encode())
-            except:
-                pass # broken pipe
+            world_state = serializeWorldState()
+            for pid, conn in clients.items():
+                try:
+                    conn.send(world_state.encode())
+                except:
+                    pass # broken pipe
 
         sleep_time = TICK_DELAY - (time.time() - start_time) # find time it took to do the math and stuff
         if sleep_time > 0: # if this consistently fails, we're cooked
@@ -446,3 +478,4 @@ def startServer():
 
 if __name__ == "__main__":
     startServer()
+

@@ -37,6 +37,13 @@ def run_fuzzer():
     possible_keys = ["W", "A", "S", "D", "SPACE", "JUNK_KEY"]
     
     print("[FUZZING] Starting action spam...")
+
+    start_message = {
+        "type": "START"
+    }
+
+    client.send(json.dumps(start_message).encode('utf-8'))
+
     try:
         for i in range(100): # Send 100 random bursts
             # Randomly pick 1-3 keys to "press"

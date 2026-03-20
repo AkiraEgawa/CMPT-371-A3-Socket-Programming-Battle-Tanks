@@ -370,40 +370,78 @@ def startGame():
             print(f"[ERROR] Failed to send start sync to Player {pid}: {e}")
 
 def handleClientConnection(conn, addr):
-    """
-    dedicated thread for each player.
-    It just listens for JSON and puts it into action_queue if necessary
-    """
     player_id = None
+    buffer = "" # Add a buffer for this specific connection
+    
     try:
         while True:
-            raw_data = conn.recv(2048).decode('utf-8')
-            if not raw_data: break # client died
+            try:
+                raw_data = conn.recv(2048).decode('utf-8')
+                if not raw_data:
+                    print(f"[INFO] Client {addr} closed connection gracefully.")
+                    break
+            
+            except (ConnectionResetError, ConnectionAbortedError):
+                # client forcibly closed smth
+                print(f"[WARNING] Client {addr} disconnected forcibly")
+                break
 
-            message = json.loads(raw_data)
+            except Exception as e:
+                print(f"[ERROR] Unexpected network error for {addr}: {e}")
+                break
 
-            if message["type"] == "CONNECT":
-                player_id = addPlayer(message["content"])
-                clients[player_id] = conn
+            buffer += raw_data
+            
+            # Process all complete JSON objects in the buffer
+            while "{" in buffer and "}" in buffer:
+                start_index = buffer.find("{")
+                bracket_count = 0
+                end_index = -1
+                
+                for i in range(start_index, len(buffer)):
+                    if buffer[i] == "{":
+                        bracket_count += 1
+                    elif buffer[i] == "}":
+                        bracket_count -= 1
+                        if bracket_count == 0:
+                            end_index = i + 1
+                            break
+                
+                if end_index == -1: 
+                    break # Incomplete message
+                
+                # Extract and parse ONE message
+                message_str = buffer[start_index:end_index]
+                try:
+                    message = json.loads(message_str)
+                    
+                    # Logic block
+                    if message["type"] == "CONNECT":
+                        player_id = addPlayer(message["content"])
+                        clients[player_id] = conn
+                        conn.send(json.dumps({"type": "ACCEPTED", "id": player_id}).encode())
+                    elif message["type"] == "START":
+                        global game_started
+                        print("The game has started!")
+                        if not game_started: startGame()
+                    elif message["type"] == "ACTION":
+                        action_queue.put((player_id, message["content"]))
+                    elif message["type"] == "LEAVE":
+                        return # triggers the 'finally' block
 
-                conn.send(json.dumps({"type": "ACCEPTED", "id": player_id}).encode())
+                except json.JSONDecodeError:
+                    pass # Skip broken fragments
+                
+                # Clear the processed part of the buffer
+                buffer = buffer[end_index:]
 
-            elif message["type"] == "ACTION":
-                action_queue.put((player_id, message["content"]))
-
-            elif message["type"] == "START":
-                global game_started
-                if not game_started:
-                    print("[SERVER] Start signal received! Initializing match...")
-                    startGame()
-            elif message["type"] == "LEAVE":
-                break # player has left us
-        
     finally:
-        if player_id:
+        if player_id is not None:
             removePlayer(player_id)
-            del clients[player_id]
+            if player_id in clients:
+                del clients[player_id]
         conn.close()
+        print(f"[CLEANUP] Connection with {addr} closed")
 
 
 # These are the commands for general game loop on main thread

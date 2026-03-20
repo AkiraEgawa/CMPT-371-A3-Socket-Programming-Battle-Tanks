@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from typing import List, Tuple
 import pygame
 import sys
+import math
 
 @dataclass
 class TankParts:
@@ -16,6 +17,14 @@ class TankParts:
     barrels: str
 
 BASE_DIR = Path(__file__).resolve().parent
+
+config_path = BASE_DIR / "config" / "config.json"
+with open(config_path) as f:
+    config = json.load(f)
+
+MAP_WIDTH = config["settings"]["MAX_WIDTH"]
+MAP_HEIGHT = config["settings"]["MAX_HEIGHT"]
+TILE_SIZE = 800 // MAP_WIDTH
 
 HOST = '127.0.0.1'
 PORT = 5050
@@ -108,7 +117,9 @@ def run_client():
     client.send(json.dumps(connect_msg).encode())
 
     while True:
-        screen.fill((30,30,30))
+        screen.fill((0,0,0))
+        draw_game()
+        pygame.display.flip()
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -131,14 +142,57 @@ def run_client():
                     action = {"type": "ACTION", "content": {"keys": active_keys}}
                     client.send(json.dumps(action).encode())
 
-def draw_world():
-    for p in world_state["players"]:
-        color = (0,255,0) if p["id"] == my_id else (255,0,0)
+def draw_game():
+    if not local_map or not game_running:
+        # Draw a "Waiting" screen if map hasn't arrived
+        font = pygame.font.SysFont(None, 48)
+        img = font.render('WAITING FOR GAME START...', True, (255, 255, 255))
+        screen.blit(img, (150, 250))
+        return
 
-        pygame.draw.circle(screen, color, (int(p["pos"][0]*50), int(p["pos"][1]*50)), 15)
-    
+    # 1. Calculate Scaling (Based on your config 80x100)
+    rows = len(local_map)     # 100
+    cols = len(local_map[0])  # 80
+    # Use the smaller ratio to ensure the whole map fits the screen
+    tile_size = min(SCREEN_WIDTH // cols, SCREEN_HEIGHT // rows)
+
+    # 2. Draw Map Tiles
+    colors = {
+        1: (34, 139, 34),   # Grass
+        2: (139, 69, 19),   # Dirt
+        3: (100, 100, 100), # Stone
+        4: (0, 0, 255),     # Water
+        5: (20, 20, 20)     # Wall
+    }
+
+    for y, row in enumerate(local_map):
+        for x, tile_id in enumerate(row):
+            rect = pygame.Rect(x * tile_size, y * tile_size, tile_size, tile_size)
+            pygame.draw.rect(screen, colors.get(tile_id, (0, 0, 0)), rect)
+
+    # 3. Draw Players
+    for p in world_state["players"]:
+        # Convert server units to screen pixels
+        pos_x = int(p["pos"][0] * tile_size)
+        pos_y = int(p["pos"][1] * tile_size)
+        
+        # Color: Green for you, Red for enemies
+        color = (0, 255, 0) if p["id"] == my_id else (255, 0, 0)
+        
+        # Draw Tank Body
+        pygame.draw.circle(screen, color, (pos_x, pos_y), int(tile_size * 0.8))
+        
+        # Draw Barrel (Direction Indicator)
+        angle = math.radians(p["rot"])
+        end_x = pos_x + math.cos(angle) * tile_size
+        end_y = pos_y + math.sin(angle) * tile_size
+        pygame.draw.line(screen, (255, 255, 255), (pos_x, pos_y), (end_x, end_y), 3)
+
+    # 4. Draw Shells
     for s in world_state["shells"]:
-        pygame.draw.circle(screen, (255, 255, 255), (int(s["pos"][0]*50), int(s["pos"][1]*50)), 5)
+        shell_x = int(s["pos"][0] * tile_size)
+        shell_y = int(s["pos"][1] * tile_size)
+        pygame.draw.circle(screen, (255, 255, 255), (shell_x, shell_y), 3)
 
 if __name__ == "__main__":
     run_client()

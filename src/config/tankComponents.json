@@ -1,11 +1,11 @@
 {
   "tracks": {
     "light_tracks": {
-      "speed": 0.3,
+      "speed": 0.1,
       "turn_rate": 3.5
     },
     "heavy_tracks": {
-      "speed": 0.15,
+      "speed": 0.05,
       "turn_rate": 2.0
     }
   },

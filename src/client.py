@@ -44,8 +44,13 @@ VISIBLE_RADIUS = 8
 TILE_SIZE = 50
 smooth_positions = {}
 
+parts_registry = {}
+
+with open(BASE_DIR / "config" / "tankComponents.json") as f:
+    COMPONENTS = json.load(f)
+
 def listen_to_server(client_socket):
-    global world_state, local_map, my_id, game_running
+    global world_state, local_map, my_id, game_running, parts_registry, COMPONENTS
     buffer = ""
 
     while True:
@@ -91,19 +96,20 @@ def listen_to_server(client_socket):
             break
 
 def handle_message(message):
-    global world_state, local_map, my_id, game_running
+    global world_state, local_map, my_id, game_running, parts_registry
     if message["type"] == "ACCEPTED":
         my_id = message["id"]
         print(f"Connected as Player {my_id}.")
     elif message["type"] == "GAME_START":
         local_map = message["content"]["map"]
+        parts_registry = message["content"]["registry"]
         game_running = True
     elif message["type"] == "UPDATE":
         world_state["players"] = message["players"]
         world_state["shells"] = message["shells"]
 
 def run_client():
-    global game_running
+    global game_running, COMPONENTS, parts_registry
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     client.settimeout(5.0)
@@ -140,7 +146,6 @@ def run_client():
     client.send(json.dumps(connect_msg).encode())
 
     while True:
-        MOVE_SPEED = 0.15
         screen.fill((0,0,0))
         draw_game()
         pygame.display.flip()
@@ -153,10 +158,19 @@ def run_client():
             if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
                 client.send(json.dumps({"type": "START"}).encode())
             
-            if game_running and my_id in smooth_positions:
+        if game_running and my_id in smooth_positions:
+
+            str_id = str(my_id)
+            
+            if str_id in parts_registry:
                 keys = pygame.key.get_pressed()
                 active_keys = []
 
+                my_parts = parts_registry[str_id]
+                track_name = my_parts["tracks"]
+
+                current_move_speed = COMPONENTS["tracks"][track_name]["speed"]
+                current_turn_rate = COMPONENTS["tracks"][track_name].get("turn_rate", 3.0)
                 move_dir = 0
 
                 if keys[pygame.K_w]: 
@@ -174,12 +188,14 @@ def run_client():
                     me = next((p for p in world_state["players"] if p["id"] == my_id), None)
                     if me:
                         rad = math.radians(me["rot"])
-                        smooth_positions[my_id][0] += math.cos(rad) * MOVE_SPEED * move_dir
-                        smooth_positions[my_id][0] += math.sin(rad) * MOVE_SPEED * move_dir
+                        smooth_positions[my_id][0] += math.cos(rad) * current_move_speed * move_dir
+                        smooth_positions[my_id][1] += math.sin(rad) * current_move_speed * move_dir
             
                 if active_keys:
                     action = {"type": "ACTION", "content": {"keys": active_keys}}
                     client.send(json.dumps(action).encode())
+    
+    clock.tick(60)
 
 def draw_game():
     global last_cam_pos, smooth_positions

@@ -105,7 +105,26 @@ def handle_message(message):
 def run_client():
     global game_running
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client.connect((HOST, PORT))
+
+    client.settimeout(5.0)
+
+    try:
+        print(f"[CONNECTING] Attempting to reach server at {HOST}:{PORT}...")
+        client.connect((HOST, PORT))
+
+        client.settimeout(None)
+        print("[SUCCESS] Connected to server")
+    
+    except (ConnectionRefusedError, socket.timeout):
+        print("\n"+"="*40)
+        print("[ERROR] SERVER NOT FOUND")
+        print(f"Could not connect to {HOST}:{PORT}")
+        print("Make sure src/server.py is running before starting the client")
+        print("="*40+"\n")
+        return
+    except Exception as e:
+        print("[ERROR] An unexpected error has occured: {e}")
+        return
 
     threading.Thread(target=listen_to_server, args=(client,), daemon = True).start()
 

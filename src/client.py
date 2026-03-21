@@ -40,6 +40,10 @@ local_map = []
 my_id = None
 game_running = False
 
+VISIBLE_RADIUS = 8
+TILE_SIZE = 50
+smooth_positions = {}
+
 def listen_to_server(client_socket):
     global world_state, local_map, my_id, game_running
     buffer = ""
@@ -117,6 +121,7 @@ def run_client():
     client.send(json.dumps(connect_msg).encode())
 
     while True:
+        MOVE_SPEED = 0.15
         screen.fill((0,0,0))
         draw_game()
         pygame.display.flip()
@@ -129,70 +134,136 @@ def run_client():
             if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
                 client.send(json.dumps({"type": "START"}).encode())
             
-            if game_running:
+            if game_running and my_id in smooth_positions:
                 keys = pygame.key.get_pressed()
                 active_keys = []
-                if keys[pygame.K_w]: active_keys.append("W")
-                if keys[pygame.K_s]: active_keys.append("S")
+
+                move_dir = 0
+
+                if keys[pygame.K_w]: 
+                    active_keys.append("W")
+                    move_dir = 1
+                if keys[pygame.K_s]: 
+                    active_keys.append("S")
+                    move_dir = -1
+                
                 if keys[pygame.K_a]: active_keys.append("A")
                 if keys[pygame.K_d]: active_keys.append("D")
                 if keys[pygame.K_SPACE]: active_keys.append("SPACE")
+
+                if move_dir != 0:
+                    me = next((p for p in world_state["players"] if p["id"] == my_id), None)
+                    if me:
+                        rad = math.radians(me["rot"])
+                        smooth_positions[my_id][0] += math.cos(rad) * MOVE_SPEED * move_dir
+                        smooth_positions[my_id][0] += math.sin(rad) * MOVE_SPEED * move_dir
             
                 if active_keys:
                     action = {"type": "ACTION", "content": {"keys": active_keys}}
                     client.send(json.dumps(action).encode())
 
 def draw_game():
+    global last_cam_pos, smooth_positions
     if not local_map or not game_running:
-        # Draw a "Waiting" screen if map hasn't arrived
+        # Draw "Waiting" screen
         font = pygame.font.SysFont(None, 48)
         img = font.render('WAITING FOR GAME START...', True, (255, 255, 255))
         screen.blit(img, (150, 250))
         return
 
-    # 1. Calculate Scaling (Based on your config 80x100)
-    rows = len(local_map)     # 100
-    cols = len(local_map[0])  # 80
-    # Use the smaller ratio to ensure the whole map fits the screen
-    tile_size = min(SCREEN_WIDTH // cols, SCREEN_HEIGHT // rows)
-
-    # 2. Draw Map Tiles
-    colors = {
-        1: (34, 139, 34),   # Grass
-        2: (139, 69, 19),   # Dirt
-        3: (100, 100, 100), # Stone
-        4: (0, 0, 255),     # Water
-        5: (20, 20, 20)     # Wall
-    }
-
-    for y, row in enumerate(local_map):
-        for x, tile_id in enumerate(row):
-            rect = pygame.Rect(x * tile_size, y * tile_size, tile_size, tile_size)
-            pygame.draw.rect(screen, colors.get(tile_id, (0, 0, 0)), rect)
-
-    # 3. Draw Players
+    # --- 1. UPDATE SMOOTH POSITIONS (LERP) ---
+    # We do this for ALL players before drawing anything
     for p in world_state["players"]:
-        # Convert server units to screen pixels
-        pos_x = int(p["pos"][0] * tile_size)
-        pos_y = int(p["pos"][1] * tile_size)
-        
-        # Color: Green for you, Red for enemies
-        color = (0, 255, 0) if p["id"] == my_id else (255, 0, 0)
-        
-        # Draw Tank Body
-        pygame.draw.circle(screen, color, (pos_x, pos_y), int(tile_size * 0.8))
-        
-        # Draw Barrel (Direction Indicator)
-        angle = math.radians(p["rot"])
-        end_x = pos_x + math.cos(angle) * tile_size
-        end_y = pos_y + math.sin(angle) * tile_size
-        pygame.draw.line(screen, (255, 255, 255), (pos_x, pos_y), (end_x, end_y), 3)
+        pid = p["id"]
+        target_x, target_y = p["pos"]
 
-    # 4. Draw Shells
+        if pid not in smooth_positions:
+            smooth_positions[pid] = [target_x, target_y]
+
+        if pid == my_id:
+            curr_x, curr_y = smooth_positions[pid]
+            smooth_positions[pid][0] += (target_x - curr_x) * 0.2
+            smooth_positions[pid][1] += (target_y - curr_y) * 0.2
+        
+        else:
+            curr_x, curr_y = smooth_positions[pid]
+            smooth_positions[pid][0] += (target_x - curr_x) * 0.2
+            smooth_positions[pid][1] += (target_y - curr_y) * 0.2
+
+    # --- 2. CAMERA CALCULATION ---
+    me = next((p for p in world_state["players"] if p["id"] == my_id), None)
+    
+    if me:
+        # Use the SMOOTH position for the camera to prevent camera jitter
+        player_x, player_y = smooth_positions[my_id]
+        last_cam_pos = [player_x, player_y]
+        is_alive = True
+    else:
+        player_x, player_y = last_cam_pos
+        is_alive = False
+
+    offset_x = (SCREEN_WIDTH // 2) - (player_x * TILE_SIZE)
+    offset_y = (SCREEN_HEIGHT // 2) - (player_y * TILE_SIZE)
+
+    # --- 3. DRAW MAP ---
+    start_x = max(0, int(player_x - VISIBLE_RADIUS - 1))
+    end_x = min(len(local_map[0]), int(player_x + VISIBLE_RADIUS + 2))
+    start_y = max(0, int(player_y - VISIBLE_RADIUS - 1))
+    end_y = min(len(local_map), int(player_y + VISIBLE_RADIUS + 2))
+
+    colors = {1: (34, 139, 34), 2: (139, 69, 19), 3: (100, 100, 100), 4: (0, 0, 255), 5: (20, 20, 20)}
+
+    for y in range(start_y, end_y):
+        for x in range(start_x, end_x):
+            rect = pygame.Rect(x * TILE_SIZE + offset_x, y * TILE_SIZE + offset_y, TILE_SIZE, TILE_SIZE)
+            pygame.draw.rect(screen, colors.get(local_map[y][x], (0, 0, 0)), rect)
+            pygame.draw.rect(screen, (0, 0, 0), rect, 1) # Grid
+
+    # --- 4. DRAW SHELLS ---
     for s in world_state["shells"]:
-        shell_x = int(s["pos"][0] * tile_size)
-        shell_y = int(s["pos"][1] * tile_size)
-        pygame.draw.circle(screen, (255, 255, 255), (shell_x, shell_y), 3)
+        sx = s["pos"][0] * TILE_SIZE + offset_x
+        sy = s["pos"][1] * TILE_SIZE + offset_y
+        if 0 <= sx <= SCREEN_WIDTH and 0 <= sy <= SCREEN_HEIGHT:
+            pygame.draw.circle(screen, (255, 255, 0), (int(sx), int(sy)), 4)
+
+    # --- 5. DRAW PLAYERS (FIXED: USING SMOOTH POSITIONS) ---
+    for p in world_state["players"]:
+        pid = p["id"]
+        # CRITICAL FIX: Use the lerped coordinates for drawing
+        px_smooth, py_smooth = smooth_positions[pid]
+        
+        px = px_smooth * TILE_SIZE + offset_x
+        py = py_smooth * TILE_SIZE + offset_y
+        
+        if -TILE_SIZE <= px <= SCREEN_WIDTH + TILE_SIZE and -TILE_SIZE <= py <= SCREEN_HEIGHT + TILE_SIZE:
+            color = (0, 255, 0) if pid == my_id else (255, 0, 0)
+            pygame.draw.circle(screen, color, (int(px), int(py)), 15)
+            
+            # Draw Barrel
+            angle = math.radians(p["rot"])
+            pygame.draw.line(screen, (255, 255, 255), (px, py), 
+                             (px + math.cos(angle)*25, py + math.sin(angle)*25), 3)
+
+    # --- 6. FOG & DEATH OVERLAY ---
+    fog_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+    fog_surface.fill((0, 0, 0, 220)) 
+    # Hole of light
+    pygame.draw.circle(fog_surface, (0, 0, 0, 0), (SCREEN_WIDTH//2, SCREEN_HEIGHT//2), VISIBLE_RADIUS * TILE_SIZE)
+    screen.blit(fog_surface, (0, 0))
+
+    if not is_alive:
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        overlay.fill((100, 0, 0, 150))
+        screen.blit(overlay, (0, 0))
+        font = pygame.font.SysFont(None, 72)
+        text = font.render("TANK DESTROYED", True, (255, 255, 255))
+        screen.blit(text, (SCREEN_WIDTH // 2 - 200, SCREEN_HEIGHT // 2 - 36))
 
 if __name__ == "__main__":
-    run_client()
+    try:
+        run_client()
+    except KeyboardInterrupt:
+        print("\n[EXIT] Shutting down client...")
+    finally:
+        pygame.quit()
+        sys.exit()

@@ -29,6 +29,9 @@ TICK_DELAY = 1/TICK_SPEED
 MAP_HEIGHT = config["settings"]["MAX_HEIGHT"]
 MAP_WIDTH = config["settings"]["MAX_WIDTH"]
 
+last_shot_time = {} # {player_id: timestamp}
+SHOOT_COOLDOWN = 1 # in seconds
+
 @dataclass
 class TankParts:
     tracks: str
@@ -209,8 +212,12 @@ def handlePlayerDeath(pid):
 
 # These are the bullet functions
 def spawnBullet(player_id: int):
-    global world_shells
+    global world_shells, last_shot_time
+    current_time = time.time()
     # handles the shoot action from clients, spawns in a bullet
+    last_time = last_shot_time.get(player_id, 0)
+    if current_time - last_time < SHOOT_COOLDOWN:
+        return
     player = active_players.get(player_id)
     static_data = parts_registry.get(player_id)
     if not player:
@@ -234,6 +241,8 @@ def spawnBullet(player_id: int):
 
     world_shells.append(new_shell)
     print(f"[COMBAT] Player {player_id} fired a {barrel_type} shell")
+
+    last_shot_time[player_id] = current_time
 
 def updateBulletPos():
     global world_shells

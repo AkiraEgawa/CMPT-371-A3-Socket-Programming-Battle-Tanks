@@ -1,11 +1,11 @@
 {
   "tracks": {
     "light_tracks": {
-      "speed": 4.0,
+      "speed": 0.3,
       "turn_rate": 3.5
     },
     "heavy_tracks": {
-      "speed": 2.5,
+      "speed": 0.15,
       "turn_rate": 2.0
     }
   },
@@ -33,14 +33,14 @@
   "barrels": {
     "standard_barrel": {
       "damage": 20,
-      "bullet_speed": 8,
+      "bullet_speed": 1,
       "bullet_lifetime": 180,
       "reload": 1.0,
       "special": "none"
     },
     "ricochet_barrel": {
       "damage": 15,
-      "bullet_speed": 7,
+      "bullet_speed": 1,
       "bullet_lifetime": 180,
       "reload": 1.2,
       "special": "bounce"

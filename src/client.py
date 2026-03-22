@@ -58,6 +58,8 @@ current_ui_state = MENU
 
 last_cam_pos = [0,0]
 
+client_running = True
+
 selected_parts = {
     "tracks": "heavy_tracks",
     "armor": "heavy_armor",
@@ -148,10 +150,10 @@ def draw_garage():
     return None
 
 def listen_to_server(client_socket):
-    global world_state, local_map, my_id, game_running, parts_registry, COMPONENTS
+    global world_state, local_map, my_id, game_running, parts_registry, COMPONENTS, client_running
     buffer = ""
 
-    while True:
+    while client_running:
         try:
             chunk = client_socket.recv(8192).decode('utf-8')
             if not chunk: break
@@ -194,20 +196,31 @@ def listen_to_server(client_socket):
             break
 
 def handle_message(message):
-    global world_state, local_map, my_id, game_running, parts_registry
-    if message["type"] == "ACCEPTED":
+    global world_state, local_map, my_id, game_running, parts_registry, current_ui_state, client_running
+
+    if message["type"] == "SERVER_SHUTDOWN":
+        print("\n[TERMINATED] The server has shut down.")
+        client_running = False
+        game_running = False
+        current_ui_state = MENU
+
+        my_id = None
+    elif message["type"] == "ACCEPTED":
+        print("You've been accepted")
         my_id = message["id"]
         print(f"Connected as Player {my_id}.")
     elif message["type"] == "GAME_START":
+        print("Game is starting!")
         local_map = message["content"]["map"]
         parts_registry = message["content"]["registry"]
         game_running = True
+        print(f"[CLIENT] Game started with {len(parts_registry)} players.")
     elif message["type"] == "UPDATE":
         world_state["players"] = message["players"]
         world_state["shells"] = message["shells"]
 
 def run_client():
-    global current_ui_state, game_running, my_id, smooth_positions, parts_registry, selected_parts, target_ip, target_port, active_input
+    global local_map, client_running, current_ui_state, game_running, my_id, smooth_positions, parts_registry, selected_parts, target_ip, target_port, active_input
     client = None
 
     while True:
@@ -246,7 +259,14 @@ def run_client():
             if action == "GO_GARAGE":
                 current_ui_state = GARAGE
             elif action == "CONNECT":
-                
+                # --- CRITICAL: RESET ALL GAME STATE ---
+                my_id = None
+                game_running = False
+                local_map = []
+                world_state = {"players": [], "shells": []}
+                smooth_positions.clear()
+                parts_registry.clear()
+                client_running = True
                 try:
                     p = int(target_port)
                     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

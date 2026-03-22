@@ -8,6 +8,7 @@ import time
 import math
 from dataclasses import dataclass, field, asdict
 from typing import List, Tuple
+import sys
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -31,6 +32,8 @@ MAP_WIDTH = config["settings"]["MAX_WIDTH"]
 
 last_shot_time = {} # {player_id: timestamp}
 SHOOT_COOLDOWN = 1 # in seconds
+
+server_running = True
 
 @dataclass
 class TankParts:
@@ -459,8 +462,9 @@ def processActions():
     pass
 
 def gameLoop():
+    global server_running
     print("[RUNNING] Game logic thread started")
-    while True:
+    while server_running:
         start_time = time.time()
 
         if game_started:
@@ -482,6 +486,7 @@ def gameLoop():
         sleep_time = TICK_DELAY - (time.time() - start_time) # find time it took to do the math and stuff
         if sleep_time > 0: # if this consistently fails, we're cooked
             time.sleep(sleep_time)
+    print("[CLEANUP] Game logic thread stopped")
 action_queue = queue.Queue()
 clients = {}
 
@@ -532,7 +537,22 @@ def startServer():
         print("\n [SHUTDOWN] Server is closing...")
 
     finally:
+        global server_running
+        server_running = False
+        shutdown_msg = json.dumps({"type": "SERVER_SHUTDOWN", "content": "Server is closing"}).encode()
+        
+        # shotgun
+        print(f"[SHUTDOWN] Notifying {len(clients)} players...")
+        for pid, conn in list(clients.items()):
+            try:
+                conn.send(shutdown_msg)
+                conn.close()
+            except:
+                # if we can't reach them, we assume they're gone already
+                pass
         server.close()
+        time.sleep(0.2)
+        print("[SHUTDOWN] All sockets have been closed. Good knowing you!")
 
 def get_local_ip():
     """
@@ -586,3 +606,7 @@ if __name__ == "__main__":
         startServer()
     except ValueError:
         print("[ERROR] Port must be a number!")
+    
+    except KeyboardInterrupt:
+        print("\nUser has attempted to kill server")
+        sys.exit()

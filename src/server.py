@@ -11,7 +11,7 @@ from typing import List, Tuple
 
 BASE_DIR = Path(__file__).resolve().parent
 
-HOST = '127.0.0.1'
+HOST = '0.0.0.0'
 PORT = 5050
 
 tankComponents_path = BASE_DIR / "config" / "tankComponents.json"
@@ -492,10 +492,21 @@ def startServer():
 
     # Let's initialize our sockets
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server.bind((HOST, PORT))
+    try:
+        server.bind((HOST, PORT))
+    except socket.error as e:
+        print(f"[ERROR] Could not bind to {HOST}:{PORT}. Is the port in use? {e}")
+        return
     server.listen()
     server.settimeout(1.0)
-    print(f"[STARTING] Server is listening on {HOST}:{PORT}")
+
+    local_ip = get_local_ip()
+
+    print("\n" + "="*50)
+    print(f"[ONLINE] Server listening on: {HOST}:{PORT}")
+    print(f"[CONNECT] Friends on your Wi-Fi should use: {local_ip}")
+    print(f"[CONNECT] You (locally) can use: 127.0.0.1")
+    print("="*50 + "\n") 
 
     # 1. Start game loop in seperate thread (kinda hard to run on main)
     game_thread = threading.Thread(target=gameLoop, daemon=True)
@@ -523,6 +534,55 @@ def startServer():
     finally:
         server.close()
 
-if __name__ == "__main__":
-    startServer()
+def get_local_ip():
+    """
+    Tries to find actual IP of host
+    """
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.settimeout(0)
+            
+        s.connect(('8.8.8.8'), 80)
+        ip = s.getsockname()[0]
+        s.close()
 
+        if ip != '127.0.0.1':
+            return ip
+    
+    except Exception:
+        pass
+
+    try:
+        hostname = socket.gethostname()
+        ips = socket.gethostbyname_ex(hostname)[2]
+        for ip in ips:
+            if not ip.startswith("127."):
+                return ip
+    except Exception:
+        pass
+
+    return '127.0.0.1'
+
+
+if __name__ == "__main__":
+    try:
+        input_host = input(f"Enter Host IP (default {HOST}): ").strip()
+        if input_host:
+            # is user stupid
+            if "." in input_host or input_host == "localhost":
+                HOST = input_host
+            else:
+                print("[!] Invalid IP format. Falling back to 0.0.0.0")
+                HOST = "0.0.0.0"
+            
+        input_port = input(f"Enter Port (default {PORT}): ").strip()
+        if input_port:
+            p = int(input_port)
+            if 1024 <= p <= 65535:
+                PORT = p
+            else:
+                print("[!] Port out of range (1024-65535). Falling back to 5050")
+        
+        startServer()
+    except ValueError:
+        print("[ERROR] Port must be a number!")

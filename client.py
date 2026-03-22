@@ -301,18 +301,6 @@ def run_client():
                     stats = COMPONENTS["tracks"][track_name]
                     current_move_speed = stats["speed"]
                     
-
-                    grid_x, grid_y = int(smooth_positions[my_id][0]), int(smooth_positions[my_id][1])
-                    speed_multiplier = 1.0
-
-                    if 0 <= grid_x < MAP_WIDTH and 0 <= grid_y < MAP_HEIGHT:
-                        current_tile = local_map[grid_y][grid_x]
-                        if current_tile == 4:  # Water
-                            speed_multiplier = 0.5  # 50% speed reduction
-                        elif current_tile == 2: # Mud
-                            speed_multiplier = 0.8  # 20% speed reduction
-
-                    move_speed = current_move_speed * speed_multiplier
                     move_dir = 0
                     if keys[pygame.K_w]: active_keys.append("W"); move_dir = 1
                     if keys[pygame.K_s]: active_keys.append("S"); move_dir = -1
@@ -320,20 +308,12 @@ def run_client():
                     if keys[pygame.K_d]: active_keys.append("D")
                     if keys[pygame.K_SPACE]: active_keys.append("SPACE")
 
-
                     if move_dir != 0:
                         me = next((p for p in world_state["players"] if p["id"] == my_id), None)
                         if me:
                             rad = math.radians(me["rot"])
-                            new_x = smooth_positions[my_id][0] + (math.cos(rad) * move_speed * move_dir)
-                            new_y = smooth_positions[my_id][1] + (math.sin(rad) * move_speed * move_dir)
-                            
-                            if 0 <= new_x <= MAP_WIDTH and 0 <= new_y <= MAP_HEIGHT:
-                                grid_x = int(new_x)
-                                grid_y = int(new_y)
-                                if local_map[grid_y][grid_x] != 5:
-                                    smooth_positions[my_id][0] += math.cos(rad) * move_speed * move_dir
-                                    smooth_positions[my_id][1] += math.sin(rad) * move_speed * move_dir
+                            smooth_positions[my_id][0] += math.cos(rad) * current_move_speed * move_dir
+                            smooth_positions[my_id][1] += math.sin(rad) * current_move_speed * move_dir
                     
                     if active_keys and client:
                         try:
@@ -345,7 +325,7 @@ def run_client():
 
 def draw_game():
     global last_cam_pos, smooth_positions
-
+    
     if not local_map or not game_running:
         # Draw "Waiting" screen
         font = pygame.font.SysFont(None, 48)

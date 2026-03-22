@@ -35,6 +35,8 @@ SHOOT_COOLDOWN = 1 # in seconds
 
 server_running = True
 
+tilemap = []
+
 @dataclass
 class TankParts:
     tracks: str
@@ -87,52 +89,36 @@ def generatePlayerID():
         _player_id_counter += 1
         return _player_id_counter
 
-def randomSpawn():
-    # randomizes spawn position
-    pass
-
-def generateSpawnPositions(map, numPlayers):
-    # uses randomSpawn() to generate spawn positions for players
-    pass
-
-# helper functions
-def enqueueAction(action):
-    # adds action to queue
-    pass
-
 # These are the map and world states
 def initializeMap(width, height):
-    tilemap = [[0 for _ in range(width)] for _ in range(height)]
-    config_path = BASE_DIR / "config" / "config.json"
-    with open(config_path) as f:
-        config = json.load(f)
-    num_tiles = config["num_tiles"]
+    # Fill with random noise initially
+    num_tiles = config.get("num_tiles", 5)
+    tilemap = [[random.randint(1, num_tiles) for _ in range(width)] for _ in range(height)]
 
+    # smoothing (This is why I hate stats)
+    for _ in range(3):
+        new_map = [row[:] for row in tilemap]
+        for y in range(1, height - 1):
+            for x in range(1, width - 1):
+                # Count neighbors
+                neighbors = []
+                for dy in [-1, 0, 1]:
+                    for dx in [-1, 0, 1]:
+                        neighbors.append(tilemap[y+dy][x+dx])
+                
+                # Set current tile to the most common neighbor (Majority Rule)
+                most_common = max(set(neighbors), key=neighbors.count)
+                new_map[y][x] = most_common
+        tilemap = new_map
+
+    # Add some "Static" (Unbreakable Walls/Borders)
+    # Tile 5 is a stone
     for y in range(height):
-        for x in range(width):
-            # get neighbors for smoothing
-            neighbors = []
-
-            # collect all 8 neighbors if existing
-            for dy in [-1,0,1]:
-                for dx in [-1,0,1]:
-                    if dy == 0 and dx == 0:
-                        continue # why would you ever do yourself?
-                    ny, nx = y + dy, x + dx
-                    if 0 <= ny < height and 0 <= nx < width:
-                        neighbors.append(tilemap[ny][nx])
-            
-            if neighbors:
-                possible_tiles = set()
-                for n in neighbors:
-                    for delta in [-1,0,1]:
-                        t = n + delta
-                        if 1 <= t <= num_tiles:
-                            possible_tiles.add(t)
-                tilemap[y][x] = random.choice(list(possible_tiles))
-            
-            else:
-                tilemap[y][x] = random.randint(1,num_tiles)
+        tilemap[y][0] = 5
+        tilemap[y][width-1] = 5
+    for x in range(width):
+        tilemap[0][x] = 5
+        tilemap[height-1][x] = 5
 
     return tilemap
 
@@ -248,7 +234,7 @@ def spawnBullet(player_id: int):
     last_shot_time[player_id] = current_time
 
 def updateBulletPos():
-    global world_shells
+    global world_shells, tilemap
     remaining_shells = []
     # updates where bullets are flying depending on their vectors
     # this updates all bullets in world_shells
@@ -260,8 +246,13 @@ def updateBulletPos():
         new_x = curr_x + vx
         new_y = curr_y + vy
 
+        grid_x = int(new_x)
+        grid_y = int(new_y)
         # check map boundaries
         if 0 <= new_x <= MAP_WIDTH and 0 <= new_y <= MAP_HEIGHT:
+            if tilemap[grid_y][grid_x] == 5:
+                print(f"[COMBAT] Shell {shell.id} hit a wall")
+                continue
             shell.position = (new_x,new_y)
             remaining_shells.append(shell)
         else:
@@ -323,6 +314,18 @@ def applyPlayerAction(player_id: int, action: dict):
     MOVE_SPEED = COMPONENTS["tracks"][track_type]["speed"]
     ROTATION_SPEED = COMPONENTS["tracks"][track_type]["turn_rate"]
 
+    grid_x, grid_y = int(player.position[0]), int(player.position[1])
+    speed_multiplier = 1.0
+
+    if 0 <= grid_x < MAP_WIDTH and 0 <= grid_y < MAP_HEIGHT:
+        current_tile = tilemap[grid_y][grid_x]
+        if current_tile == 4:  # Water
+            speed_multiplier = 0.5  # 50% speed reduction
+        elif current_tile == 2: # Mud
+            speed_multiplier = 0.8  # 20% speed reduction
+
+    move_speed = MOVE_SPEED * speed_multiplier
+
     keys = action.get("keys", [])
 
     # Get rotated
@@ -341,11 +344,14 @@ def applyPlayerAction(player_id: int, action: dict):
     elif "S" in keys: move_dir = -1
 
     if move_dir != 0:
-        new_x = player.position[0] + (math.cos(rad) * MOVE_SPEED * move_dir)
-        new_y = player.position[1] + (math.sin(rad) * MOVE_SPEED * move_dir)
+        new_x = player.position[0] + (math.cos(rad) * move_speed * move_dir)
+        new_y = player.position[1] + (math.sin(rad) * move_speed * move_dir)
 
         if 0 <= new_x <= MAP_WIDTH and 0 <= new_y <= MAP_HEIGHT:
-            player.position = (new_x, new_y)
+            grid_x = int(new_x)
+            grid_y = int(new_y)
+            if tilemap[grid_y][grid_x] != 5:
+                player.position = (new_x, new_y)
 
     if "SPACE" in keys:
         spawnBullet(player_id)
@@ -359,11 +365,32 @@ def parseMessage():
     # if type == action, add it to the list
     pass
 
+def findSafeSpawn(tilemap):
+    """
+    Finds a random coordinate that is not a Wall (5) or Water (4).
+    """
+    max_attempts = 200
+    for _ in range(max_attempts):
+        rx = random.uniform(1, MAP_WIDTH - 1)
+        ry = random.uniform(1, MAP_HEIGHT - 1)
+        
+        # Check tile type at this coordinate
+        if tilemap[int(ry)][int(rx)] not in [4, 5]:
+            return (rx, ry)
+            
+    # How is it all walls?
+    return (MAP_WIDTH // 2, MAP_HEIGHT // 2)
+
 def startGame():
-    global game_started
+    global game_started, tilemap
     game_started = True
 
     tilemap = initializeMap(MAP_WIDTH, MAP_HEIGHT)
+
+
+    for pid, player in active_players.items():
+            player.position = findSafeSpawn(tilemap)
+            print(f"[SPAWN] Player {pid} safely placed at {player.position}")
 
     initial_sync = {
         "type": "GAME_START",

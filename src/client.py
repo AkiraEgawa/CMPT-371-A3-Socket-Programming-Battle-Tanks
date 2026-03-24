@@ -54,6 +54,8 @@ parts_registry = {}
 MENU = "menu"
 GARAGE = "garage"
 GAME = "game"
+INSTRUCTIONS = "instructions"
+
 current_ui_state = MENU
 
 last_cam_pos = [0,0]
@@ -88,6 +90,11 @@ def draw_button(text, x, y, w, h, color, hover_color):
     
     return is_clicked
 
+def draw_text(text, x, y, w, h):
+    font = pygame.font.SysFont(None, 30)
+    text_surf = font.render(text, True, (255, 255, 255))
+    screen.blit(text_surf, (x + w/2 - text_surf.get_width()/2, y + h/2 - text_surf.get_height()/2))
+
 def draw_main_menu():
     global target_ip, target_port, active_input
     screen.fill((20, 20, 20))
@@ -116,12 +123,13 @@ def draw_main_menu():
     if draw_button(target_port, 300, 220, 100, 40, port_color, (80, 80, 150)):
         active_input = "PORT"
 
-
-    if draw_button("JOIN SERVER", 300, 250, 200, 50, (50, 50, 50), (100, 100, 100)):
+    if draw_button("CONTROLS", 300, 270, 200, 50, (50, 50, 50), (100, 100, 100)):
+        return "INSTRUCTIONS"
+    if draw_button("JOIN SERVER", 300, 330, 200, 50, (50, 50, 50), (100, 100, 100)):
         return "CONNECT"
-    if draw_button("BUILD TANK", 300, 320, 200, 50, (50, 50, 50), (100, 100, 100)):
+    if draw_button("BUILD TANK", 300, 390, 200, 50, (50, 50, 50), (100, 100, 100)):
         return "GO_GARAGE"
-    if draw_button("QUIT", 300, 390, 200, 50, (150, 0, 0), (200, 0, 0)):
+    if draw_button("QUIT", 300, 450, 200, 50, (150, 0, 0), (200, 0, 0)):
         pygame.quit()
         sys.exit()
     return None
@@ -146,6 +154,23 @@ def draw_garage():
         y_offset += 60
 
     if draw_button("BACK TO MENU", 300, 500, 200, 50, (100, 100, 100), (150, 150, 150)):
+        return "GO_MENU"
+    return None
+
+def draw_instructions():
+    title_font = pygame.font.SysFont(None, 80)
+    instructions_title = title_font.render("TANK CONTROLS", True, (200, 0, 0))
+    screen.blit(instructions_title, (SCREEN_WIDTH//2 - instructions_title.get_width()//2, 100))
+
+    font = pygame.font.SysFont(None, 30)
+    draw_text("W - Move forwards", 300, 180, 200, 30)
+    draw_text("A - Move left", 300, 220, 200, 30)
+    draw_text("S - Move backwards", 300, 260, 200, 30)
+    draw_text("D - Move right", 300, 300, 200, 30)
+    draw_text("Spacebar - Shoot cannon", 300, 340, 200, 30)
+    draw_text("Enter - Start game", 300, 380, 200, 30)
+    draw_text("Escape - Return to main menu", 300, 420, 200, 30)
+    if draw_button("BACK TO MENU", 300, 480, 200, 50, (100, 100, 100), (150, 150, 150)):
         return "GO_MENU"
     return None
 
@@ -258,6 +283,8 @@ def run_client():
             action = draw_main_menu()
             if action == "GO_GARAGE":
                 current_ui_state = GARAGE
+            elif action == "INSTRUCTIONS":
+                current_ui_state = INSTRUCTIONS
             elif action == "CONNECT":
                 # --- CRITICAL: RESET ALL GAME STATE ---
                 my_id = None
@@ -284,6 +311,11 @@ def run_client():
 
         elif current_ui_state == GARAGE:
             action = draw_garage()
+            if action == "GO_MENU":
+                current_ui_state = MENU
+        
+        elif current_ui_state == INSTRUCTIONS:
+            action = draw_instructions()
             if action == "GO_MENU":
                 current_ui_state = MENU
 

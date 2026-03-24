@@ -21,10 +21,10 @@ def run_fuzzer():
     setup_data = {
         "type": "CONNECT",
         "content": {
-            "tracks": "heavy_tracks",
-            "armor": "heavy_armor",
-            "sights": "standard_sight",
-            "barrels": "standard_barrel"
+            "tracks": "Heavy Tracks",
+            "armor": "Heavy Armor",
+            "sights": "Standard Sight",
+            "barrels": "Standard Barrel"
         }
     }
     client.send(json.dumps(setup_data).encode('utf-8'))

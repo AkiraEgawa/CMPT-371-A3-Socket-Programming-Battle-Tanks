@@ -63,10 +63,10 @@ last_cam_pos = [0,0]
 client_running = True
 
 selected_parts = {
-    "tracks": "heavy_tracks",
-    "armor": "heavy_armor",
-    "sights": "standard_sight",
-    "barrels": "standard_barrel"
+    "tracks": "Heavy Tracks",
+    "armor": "Heavy Armor",
+    "sights": "Standard Sight",
+    "barrels": "Standard Barrel"
 }
 
 with open(BASE_DIR / "config" / "tankComponents.json") as f:
@@ -143,14 +143,14 @@ def draw_garage():
     for category, options in COMPONENTS.items():
         font = pygame.font.SysFont(None, 35)
         cat_text = font.render(f"{category.upper()}: {selected_parts[category]}", True, (255, 255, 0))
-        screen.blit(cat_text, (100, y_offset))
+        screen.blit(cat_text, (50, y_offset))
         
         # Draw small buttons for each part in that category
-        x_offset = 350
+        x_offset = 380
         for part_name in options.keys():
-            if draw_button(part_name, x_offset, y_offset - 10, 150, 35, (70, 70, 70), (120, 120, 120)):
+            if draw_button(part_name, x_offset, y_offset - 10, 200, 35, (70, 70, 70), (120, 120, 120)):
                 selected_parts[category] = part_name
-            x_offset += 160
+            x_offset += 210
         y_offset += 60
 
     if draw_button("BACK TO MENU", 300, 500, 200, 50, (100, 100, 100), (150, 150, 150)):
@@ -158,8 +158,10 @@ def draw_garage():
     return None
 
 def draw_instructions():
-    title_font = pygame.font.SysFont(None, 80)
-    instructions_title = title_font.render("TANK CONTROLS", True, (200, 0, 0))
+    screen.fill((30, 30, 30))
+
+    title_font = pygame.font.SysFont(None, 50)
+    instructions_title = title_font.render("Tank Controls", True, (200, 0, 0))
     screen.blit(instructions_title, (SCREEN_WIDTH//2 - instructions_title.get_width()//2, 100))
 
     font = pygame.font.SysFont(None, 30)

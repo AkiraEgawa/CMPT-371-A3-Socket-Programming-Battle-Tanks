@@ -72,6 +72,8 @@ selected_parts = {
 with open(BASE_DIR / "config" / "tankComponents.json") as f:
     COMPONENTS = json.load(f)
 
+leavingGame = False
+
 def draw_button(text, x, y, w, h, color, hover_color):
     mouse = pygame.mouse.get_pos()
     click = pygame.mouse.get_pressed()
@@ -247,7 +249,7 @@ def handle_message(message):
         world_state["shells"] = message["shells"]
 
 def run_client():
-    global local_map, client_running, current_ui_state, game_running, my_id, smooth_positions, parts_registry, selected_parts, target_ip, target_port, active_input
+    global local_map, client_running, current_ui_state, game_running, my_id, smooth_positions, parts_registry, selected_parts, target_ip, target_port, active_input, leavingGame
     client = None
 
     while True:
@@ -296,6 +298,7 @@ def run_client():
                 smooth_positions.clear()
                 parts_registry.clear()
                 client_running = True
+                leavingGame = False
                 try:
                     p = int(target_port)
                     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -353,7 +356,11 @@ def run_client():
                     if keys[pygame.K_a]: active_keys.append("A")
                     if keys[pygame.K_d]: active_keys.append("D")
                     if keys[pygame.K_SPACE]: active_keys.append("SPACE")
+                    if keys[pygame.K_ESCAPE]: leavingGame = True
 
+                    if leavingGame:
+                        current_ui_state = MENU
+                        client.send(json.dumps({"type": "LEAVE"}).encode())
 
                     if move_dir != 0:
                         me = next((p for p in world_state["players"] if p["id"] == my_id), None)

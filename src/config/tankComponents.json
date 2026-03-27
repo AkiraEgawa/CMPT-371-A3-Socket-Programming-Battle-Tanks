@@ -33,14 +33,14 @@
   "barrels": {
     "Standard Barrel": {
       "damage": 20,
-      "bullet_speed": 1,
+      "bullet_speed": 0.3,
       "bullet_lifetime": 180,
       "reload": 1.0,
       "special": "none"
     },
     "AP Barrel": {
       "damage": 80,
-      "bullet_speed": 1,
+      "bullet_speed": 0.2,
       "bullet_lifetime": 180,
       "reload": 2.5,
       "special": "hits hard"

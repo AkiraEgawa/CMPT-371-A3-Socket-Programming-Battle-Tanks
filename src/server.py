@@ -242,10 +242,18 @@ def spawnBullet(player_id: int):
     vx = math.cos(rad) * BULLET_SPEED
     vy = math.sin(rad) * BULLET_SPEED
 
+    dx = math.cos(rad) * 0.75
+    dy = math.sin(rad) * 0.75
+
+    bulletSpawnX, bulletSpawnY = player.position
+    bulletSpawnX += dx
+    bulletSpawnY += dy
+    
+
     new_shell = Shell(
         id = random.randint(0, 999999),
         shell_type = barrel_type,
-        position = player.position,
+        position = (bulletSpawnX, bulletSpawnY),
         velocity = (vx,vy)
     )
 

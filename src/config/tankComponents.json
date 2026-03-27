@@ -38,12 +38,12 @@
       "reload": 1.0,
       "special": "none"
     },
-    "Ricochet Barrel": {
-      "damage": 15,
+    "AP Barrel": {
+      "damage": 80,
       "bullet_speed": 1,
       "bullet_lifetime": 180,
-      "reload": 1.2,
-      "special": "bounce"
+      "reload": 2.5,
+      "special": "hits hard"
     }
   }
 }

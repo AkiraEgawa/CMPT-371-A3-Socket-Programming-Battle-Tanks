@@ -31,7 +31,6 @@ MAP_HEIGHT = config["settings"]["MAX_HEIGHT"]
 MAP_WIDTH = config["settings"]["MAX_WIDTH"]
 
 last_shot_time = {} # {player_id: timestamp}
-SHOOT_COOLDOWN = 1 # in seconds
 
 server_running = True
 
@@ -205,8 +204,7 @@ def spawnBullet(player_id: int):
     current_time = time.time()
     # handles the shoot action from clients, spawns in a bullet
     last_time = last_shot_time.get(player_id, 0)
-    if current_time - last_time < SHOOT_COOLDOWN:
-        return
+    
     player = active_players.get(player_id)
     static_data = parts_registry.get(player_id)
     if not player:
@@ -214,6 +212,11 @@ def spawnBullet(player_id: int):
     
     barrel_type = static_data.parts.barrels
     barrel_stats = COMPONENTS["barrels"][barrel_type]
+    SHOOT_COOLDOWN = barrel_stats["reload"]
+
+    if current_time - last_time < SHOOT_COOLDOWN:
+        return
+
 
     BULLET_SPEED = barrel_stats["bullet_speed"]
 

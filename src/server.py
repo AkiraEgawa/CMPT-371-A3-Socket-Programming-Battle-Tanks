@@ -197,6 +197,24 @@ def handlePlayerDeath(pid):
     if pid in active_players:
         print(f"[DEATH] Player {pid} has been destroyed!")
         del active_players[pid]
+    
+    if len(active_players) == 1:
+        winner = next(iter(active_players))
+        print(f"[VICTORY] Player {winner} has won!")
+
+        # Send out message to all players
+        victory_message = {
+            "type": "VICTORY",
+            "content": {
+                "id": winner
+            }
+        }
+        message_bytes = json.dumps(victory_message).encode('utf-8')
+        for pid, conn in clients.items():
+            try:
+                conn.send(message_bytes)
+            except Exception as e:
+                print(f"[ERROR] Failed to send start sync to Player {pid}: {e}")
 
 # These are the bullet functions
 def spawnBullet(player_id: int):

@@ -73,6 +73,7 @@ with open(BASE_DIR / "config" / "tankComponents.json") as f:
     COMPONENTS = json.load(f)
 
 leavingGame = False
+victory = False
 
 def draw_button(text, x, y, w, h, color, hover_color):
     mouse = pygame.mouse.get_pos()
@@ -225,7 +226,7 @@ def listen_to_server(client_socket):
             break
 
 def handle_message(message):
-    global world_state, local_map, my_id, game_running, parts_registry, current_ui_state, client_running
+    global world_state, local_map, my_id, game_running, parts_registry, current_ui_state, client_running, victory
 
     if message["type"] == "SERVER_SHUTDOWN":
         print("\n[TERMINATED] The server has shut down.")
@@ -247,6 +248,9 @@ def handle_message(message):
     elif message["type"] == "UPDATE":
         world_state["players"] = message["players"]
         world_state["shells"] = message["shells"]
+    elif message["type"] == "VICTORY":
+        if my_id == message["content"]["id"]:
+            victory = True
 
 def run_client():
     global local_map, client_running, current_ui_state, game_running, my_id, smooth_positions, parts_registry, selected_parts, target_ip, target_port, active_input, leavingGame
@@ -487,6 +491,16 @@ def draw_game():
         font = pygame.font.SysFont(None, 72)
         text = font.render("TANK DESTROYED", True, (255, 255, 255))
         screen.blit(text, (SCREEN_WIDTH // 2 - 200, SCREEN_HEIGHT // 2 - 36))
+    if victory:
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        overlay.fill((255, 255, 0, 150))
+        screen.blit(overlay, (0, 0))
+        font = pygame.font.SysFont(None, 72)
+        text = font.render("VICTORY!", True, (255, 255, 255))
+        text_rect = text.get_rect()
+        text_rect.center = (SCREEN_WIDTH//2, SCREEN_HEIGHT//2)
+
+        screen.blit(text, text_rect)
 
 if __name__ == "__main__":
     try:

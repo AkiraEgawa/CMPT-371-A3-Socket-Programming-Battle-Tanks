@@ -245,6 +245,62 @@ def _get_gradient(percentage):
 
     return (red, green, blue)
 
+def draw_broken_bar(screen, color, x, y, width, height):
+    # Draw the main solid part of the bar (90% of the width)
+    main_w = int(width * 0.9)
+    pygame.draw.rect(screen, color, (x, y, main_w, height))
+
+    # We define points for a zig-zag polygon
+    points = [
+        (x + main_w, y),                      # Top left of tip
+        (x + width + 5, y + height * 0.2),    # Jagged point 1
+        (x + width - 5, y + height * 0.5),    # Jagged point 2 (inward)
+        (x + width + 8, y + height * 0.8),    # Jagged point 3
+        (x + main_w, y + height)              # Bottom left of tip
+    ]
+    pygame.draw.polygon(screen, color, points)
+
+    # Cracks
+    for _ in range(3):
+        cx = x + main_w + random.randint(-150, 30)
+        pygame.draw.line(screen, (0, 0, 0), (cx, y), (cx + 5, y + height), 1)
+
+
+def draw_stat_bar(label, value, max_value, x, y):
+    pct = value/max_value
+    bar_color = _get_gradient(pct)
+
+    if pct > 1.0:
+        bar_color = (0,255,255)
+    if pct > 1.2:
+        bar_color = (255,0,255)
+        pct = 1.25
+
+    font = pygame.font.SysFont(None, 35)
+    text = font.render(label, True, (200,200,200))
+    screen.blit(text, (x,y))
+
+    # background time
+    pygame.draw.rect(screen, (50, 50, 50), (x + 120, y, 150, 15))
+
+    # fill in the bar
+    fill_width = pct * 150
+
+    # Draw the bar properly
+    if pct > 1.2:
+        draw_broken_bar(screen, bar_color, x+120, y, fill_width, 15)
+
+        for _ in range(5):
+            sx = (x+120) + fill_width + random.randint(-150, 15)
+            sy = y + random.randint(0,15)
+            pygame.draw.rect(screen, (255, 255, 255), (sx, sy, 2, 2))
+    else:
+        pygame.draw.rect(screen, bar_color, (x + 120, y, fill_width, 15))
+    
+    # border
+    pygame.draw.rect(screen, (200, 200, 200), (x + 120, y, 150, 15), 1)
+
+"""
 def draw_stat_bar(label, value, max_value, x, y):
 
     pct = value / max_value
@@ -253,15 +309,24 @@ def draw_stat_bar(label, value, max_value, x, y):
     font = pygame.font.SysFont(None, 35)
     text = font.render(label, True, (200,200,200))
     screen.blit(text, (x,y))
-
+    fill_width = (pct) * 150
     if pct > 1:
         bar_color = (0,255,255)
+    if pct > 1.2:
+        bar_color = (255, 0, 255)
+        pct = 1.21
+        draw_broken_bar(screen, bar_color, x+120, y, fill_width, 15)
+        for _ in range(5):
+            sx = x + fill_width + random.randint(-5, 15)
+            sy = y + random.randint(0, 15)
+            pygame.draw.rect(screen, (255, 255, 255), (sx, sy, 2, 2))
+
 
     pygame.draw.rect(screen, (50,50,50), (x+120, y, 150, 15))
-    fill_width = (pct) * 150
+    
     pygame.draw.rect(screen, bar_color, (x + 120, y, fill_width, 15))
     pygame.draw.rect(screen, (200, 200, 200), (x+120, y, 150, 15), 1)
-
+"""
 def draw_instructions():
     screen.fill((30, 30, 30))
 

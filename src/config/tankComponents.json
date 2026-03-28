@@ -80,6 +80,13 @@
       "bullet_lifetime": 180,
       "reload": 1.5,
       "special": "bullets bounce"
+    },
+    "BIG SHOT": {
+      "damage": 900,
+      "bullet_speed": 0.05,
+      "bullet_lifetime": 180,
+      "reload": 20,
+      "special": "Yes, this is a Deltarune reference"
     }
   }
 }

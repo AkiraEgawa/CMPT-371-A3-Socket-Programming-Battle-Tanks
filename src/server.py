@@ -294,6 +294,7 @@ def updateBulletPos():
                     shell.velocity = vx, vy
                     shell.bounceTimes+=1
                 else:
+                    print(f"[COMBAT] Shell {shell.id} dissipated on a wall")
                     continue
             shell.position = (new_x,new_y)
             remaining_shells.append(shell)

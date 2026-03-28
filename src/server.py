@@ -61,6 +61,7 @@ class Shell:
   shell_type: str
   position: Tuple[float, float]
   velocity: Tuple[float, float]
+  bounceTimes: int
 
 @dataclass
 class EntityList:
@@ -254,7 +255,8 @@ def spawnBullet(player_id: int):
         id = random.randint(0, 999999),
         shell_type = barrel_type,
         position = (bulletSpawnX, bulletSpawnY),
-        velocity = (vx,vy)
+        velocity = (vx,vy),
+        bounceTimes=0
     )
 
     world_shells.append(new_shell)
@@ -281,13 +283,14 @@ def updateBulletPos():
         if 0 <= new_x <= MAP_WIDTH and 0 <= new_y <= MAP_HEIGHT:
             if tilemap[grid_y][grid_x] == 5:
                 print(f"[COMBAT] Shell {shell.id} hit a wall")
-                if shell.shell_type == "Ricochet Barrel":
-                # Current bugs: bullets can be shot inside walls and at specific angles can be stuck inside them until they bounce out
+                if shell.shell_type == "Ricochet Barrel" and shell.bounceTimes < 2:
+                    # Current bugs: bullets can be shot inside walls and at specific angles can be stuck inside them until they bounce out
                     if abs(grid_x - math.floor(curr_x)) >= 1:
                         vx = vx * -1
                     elif abs(grid_y - math.floor(curr_y)) >= 1:
                         vy = vy * -1
                     shell.velocity = vx, vy
+                    shell.bounceTimes+=1
                 else:
                     continue
             shell.position = (new_x,new_y)

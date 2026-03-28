@@ -63,10 +63,10 @@ last_cam_pos = [0,0]
 client_running = True
 
 selected_parts = {
-    "tracks": "Heavy Tracks",
-    "armor": "Heavy Armor",
+    "tracks": "Standard Tracks",
+    "armor": "Standard Armor",
     "sights": "Standard Sight",
-    "barrels": "Ricochet Barrel"
+    "barrels": "Standard Barrel"
 }
 
 with open(BASE_DIR / "config" / "tankComponents.json") as f:
@@ -144,6 +144,31 @@ def draw_main_menu():
         sys.exit()
     return None
 
+def get_total_reload(barrel_name, sight_name):
+    base_reload = COMPONENTS["barrels"][barrel_name]["reload"]
+    penalty = COMPONENTS["sights"][sight_name]["reload_penalty"]
+    return base_reload * penalty
+
+def get_normalized_total_reload():
+    # Calculate the current total
+    current_total = get_total_reload(selected_parts["barrels"], selected_parts["sights"])
+
+    # Find the Absolute Min and Max possible in the whole game
+    all_possible_reloads = []
+    for b_name in COMPONENTS["barrels"]:
+        for s_name in COMPONENTS["sights"]:
+            all_possible_reloads.append(get_total_reload(b_name, s_name))
+    
+    # Apply the Logarithmic Math
+    log_min = math.log10(min(all_possible_reloads) + 0.0001)
+    log_max = math.log10(max(all_possible_reloads) + 0.0001)
+    log_curr = math.log10(current_total + 0.0001)
+
+    # Reverse (Lower reload = Higher bar) and apply Floor
+    raw_score = (log_max - log_curr) / (log_max - log_min)
+    floor = 0.15
+    return floor + (raw_score * (1.0 - floor))
+
 def draw_garage():
     global selected_parts, VISIBLE_RADIUS, TILE_SIZE
     screen.fill((30, 30, 30))
@@ -205,9 +230,10 @@ def draw_garage():
     range_val = COMPONENTS['sights'][selected_parts['sights']]['range']
     draw_stat_bar("RANGE", range_val, 20, 400, stats_y)
 
-    reload_time = COMPONENTS['barrels'][selected_parts['barrels']]['reload']
-    fire_rate = 1.0 / reload_time 
-    draw_stat_bar("RELOAD", fire_rate, 1, 400, stats_y + 30)
+    # Reload Time
+    fire_rate_score = get_normalized_total_reload()
+    display_pct = fire_rate_score * 1.15
+    draw_stat_bar("RELOAD", display_pct, 1.0, 400, stats_y + 30)
 
 def _get_gradient(percentage):
     # This gives you a gradient from red to green
@@ -228,8 +254,11 @@ def draw_stat_bar(label, value, max_value, x, y):
     text = font.render(label, True, (200,200,200))
     screen.blit(text, (x,y))
 
+    if pct > 1:
+        bar_color = (0,255,255)
+
     pygame.draw.rect(screen, (50,50,50), (x+120, y, 150, 15))
-    fill_width = (value/max_value) * 150
+    fill_width = (pct) * 150
     pygame.draw.rect(screen, bar_color, (x + 120, y, fill_width, 15))
     pygame.draw.rect(screen, (200, 200, 200), (x+120, y, 150, 15), 1)
 

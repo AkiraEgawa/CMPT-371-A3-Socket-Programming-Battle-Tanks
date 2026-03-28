@@ -231,9 +231,11 @@ def spawnBullet(player_id: int):
     if not player:
         return
     
+    sight_type = static_data.parts.sights
     barrel_type = static_data.parts.barrels
     barrel_stats = COMPONENTS["barrels"][barrel_type]
-    SHOOT_COOLDOWN = barrel_stats["reload"]
+    sight_stats = COMPONENTS["sights"][sight_type]
+    SHOOT_COOLDOWN = barrel_stats["reload"] * sight_stats["reload_penalty"]
 
     if current_time - last_time < SHOOT_COOLDOWN:
         return

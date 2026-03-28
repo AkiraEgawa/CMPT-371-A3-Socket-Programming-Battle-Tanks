@@ -409,11 +409,12 @@ def run_client():
                     active_keys = []
                     my_parts = parts_registry[str_id]
                     track_name = my_parts["tracks"]
-                    
+                    armor_name = my_parts["armor"]                
+    
                     stats = COMPONENTS["tracks"][track_name]
-                    current_move_speed = stats["speed"]
-                    
-
+                    speed_penalty = COMPONENTS["armor"][armor_name]["speed_penalty"]
+                    current_move_speed = stats["speed"] * speed_penalty
+        
                     grid_x, grid_y = int(smooth_positions[my_id][0]), int(smooth_positions[my_id][1])
                     speed_multiplier = 1.0
 

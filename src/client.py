@@ -75,17 +75,24 @@ with open(BASE_DIR / "config" / "tankComponents.json") as f:
 leavingGame = False
 victory = False
 
+mouse_already_pressed = False
+
 def draw_button(text, x, y, w, h, color, hover_color):
+    global mouse_already_pressed
     mouse = pygame.mouse.get_pos()
     click = pygame.mouse.get_pressed()
     is_clicked = False
 
     if x + w > mouse[0] > x and y + h > mouse[1] > y:
         pygame.draw.rect(screen, hover_color, (x, y, w, h))
-        if click[0] == 1:
+        if click[0] == 1 and not mouse_already_pressed:
+            mouse_already_pressed = True
             is_clicked = True
     else:
         pygame.draw.rect(screen, color, (x, y, w, h))
+    
+    if click[0] == 0:
+        mouse_already_pressed = False
     
     font = pygame.font.SysFont(None, 30)
     text_surf = font.render(text, True, (255, 255, 255))
@@ -136,7 +143,7 @@ def draw_main_menu():
         pygame.quit()
         sys.exit()
     return None
-
+"""
 def draw_garage():
     global selected_parts
     screen.fill((30, 30, 30))
@@ -157,6 +164,44 @@ def draw_garage():
         y_offset += 60
 
     if draw_button("BACK TO MENU", 300, 500, 200, 50, (100, 100, 100), (150, 150, 150)):
+        return "GO_MENU"
+    return None
+"""
+def draw_garage():
+    global selected_parts
+    screen.fill((30, 30, 30))
+    
+    y_offset = 150
+    font = pygame.font.SysFont(None, 35)
+
+    for category, options in COMPONENTS.items():
+        # Convert options to a list to handle indexing
+        part_list = list(options.keys())
+        current_part = selected_parts[category]
+        current_idx = part_list.index(current_part)
+
+        # Draw Category Label
+        cat_text = font.render(f"{category.upper()}:", True, (255, 255, 0))
+        screen.blit(cat_text, (50, y_offset))
+        
+        # Left arrow
+        if draw_button("<", 350, y_offset - 10, 40, 40, (70, 70, 70), (120, 120, 120)):
+            # Doubly Linked List: (index - 1) % length
+            new_idx = (current_idx - 1) % len(part_list)
+            selected_parts[category] = part_list[new_idx]
+
+        # just a box with name in it, nothing fancy
+        draw_button(current_part, 400, y_offset - 10, 250, 40, (50, 50, 50), (50, 50, 50))
+
+        # Right arrow
+        if draw_button(">", 660, y_offset - 10, 40, 40, (70, 70, 70), (120, 120, 120)):
+            # Doubly Linked List: (index + 1) % length
+            new_idx = (current_idx + 1) % len(part_list)
+            selected_parts[category] = part_list[new_idx]
+
+        y_offset += 70
+
+    if draw_button("BACK TO MENU", 300, 550, 200, 50, (100, 100, 100), (150, 150, 150)):
         return "GO_MENU"
     return None
 

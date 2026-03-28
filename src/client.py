@@ -145,7 +145,7 @@ def draw_main_menu():
     return None
 
 def draw_garage():
-    global selected_parts
+    global selected_parts, VISIBLE_RADIUS, TILE_SIZE
     screen.fill((30, 30, 30))
     
     y_offset = 150
@@ -179,6 +179,8 @@ def draw_garage():
         y_offset += 70
 
     if draw_button("BACK TO MENU", 300, 550, 200, 50, (100, 100, 100), (150, 150, 150)):
+        VISIBLE_RADIUS = COMPONENTS["sights"][selected_parts["sights"]]["range"]
+        TILE_SIZE = 50 / (VISIBLE_RADIUS) * 8
         return "GO_MENU"
     
     # I need to draw multiple stat bars

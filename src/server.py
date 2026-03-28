@@ -348,7 +348,8 @@ def applyPlayerAction(player_id: int, action: dict):
         return # player left after sending action, before processing
     
     track_type = static_data.parts.tracks
-    MOVE_SPEED = COMPONENTS["tracks"][track_type]["speed"]
+    armor_type = static_data.parts.armor
+    MOVE_SPEED = COMPONENTS["tracks"][track_type]["speed"] * COMPONENTS["armor"][armor_type]["speed_penalty"]
     ROTATION_SPEED = COMPONENTS["tracks"][track_type]["turn_rate"]
 
     grid_x, grid_y = int(player.position[0]), int(player.position[1])

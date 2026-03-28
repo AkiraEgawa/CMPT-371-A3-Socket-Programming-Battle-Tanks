@@ -75,17 +75,24 @@ with open(BASE_DIR / "config" / "tankComponents.json") as f:
 leavingGame = False
 victory = False
 
+mouse_already_pressed = False
+
 def draw_button(text, x, y, w, h, color, hover_color):
+    global mouse_already_pressed
     mouse = pygame.mouse.get_pos()
     click = pygame.mouse.get_pressed()
     is_clicked = False
 
     if x + w > mouse[0] > x and y + h > mouse[1] > y:
         pygame.draw.rect(screen, hover_color, (x, y, w, h))
-        if click[0] == 1:
+        if click[0] == 1 and not mouse_already_pressed:
+            mouse_already_pressed = True
             is_clicked = True
     else:
         pygame.draw.rect(screen, color, (x, y, w, h))
+    
+    if click[0] == 0:
+        mouse_already_pressed = False
     
     font = pygame.font.SysFont(None, 30)
     text_surf = font.render(text, True, (255, 255, 255))
@@ -142,23 +149,87 @@ def draw_garage():
     screen.fill((30, 30, 30))
     
     y_offset = 150
-    # Loop through the JSON categories to make selection buttons
+    font = pygame.font.SysFont(None, 35)
+
     for category, options in COMPONENTS.items():
-        font = pygame.font.SysFont(None, 35)
-        cat_text = font.render(f"{category.upper()}: {selected_parts[category]}", True, (255, 255, 0))
+        # Convert options to a list to handle indexing
+        part_list = list(options.keys())
+        current_part = selected_parts[category]
+        current_idx = part_list.index(current_part)
+
+        # Draw Category Label
+        cat_text = font.render(f"{category.upper()}:", True, (255, 255, 0))
         screen.blit(cat_text, (50, y_offset))
         
-        # Draw small buttons for each part in that category
-        x_offset = 380
-        for part_name in options.keys():
-            if draw_button(part_name, x_offset, y_offset - 10, 200, 35, (70, 70, 70), (120, 120, 120)):
-                selected_parts[category] = part_name
-            x_offset += 100
-        y_offset += 60
+        # Left arrow
+        if draw_button("<", 350, y_offset - 10, 40, 40, (70, 70, 70), (120, 120, 120)):
+            # Doubly Linked List: (index - 1) % length
+            new_idx = (current_idx - 1) % len(part_list)
+            selected_parts[category] = part_list[new_idx]
 
-    if draw_button("BACK TO MENU", 300, 500, 200, 50, (100, 100, 100), (150, 150, 150)):
+        # just a box with name in it, nothing fancy
+        draw_button(current_part, 400, y_offset - 10, 250, 40, (50, 50, 50), (50, 50, 50))
+
+        # Right arrow
+        if draw_button(">", 660, y_offset - 10, 40, 40, (70, 70, 70), (120, 120, 120)):
+            # Doubly Linked List: (index + 1) % length
+            new_idx = (current_idx + 1) % len(part_list)
+            selected_parts[category] = part_list[new_idx]
+
+        y_offset += 70
+
+    if draw_button("BACK TO MENU", 300, 550, 200, 50, (100, 100, 100), (150, 150, 150)):
         return "GO_MENU"
-    return None
+    
+    # I need to draw multiple stat bars
+    # HP, Speed, DMG, Sight Range, reload speed
+    stats_y = y_offset + 10
+
+
+    # HP
+    hp_val = COMPONENTS['armor'][selected_parts['armor']]['hp']
+    draw_stat_bar("HP", hp_val, 200, 100, stats_y)
+
+    # SPEED
+    current_speed = COMPONENTS['tracks'][selected_parts['tracks']]['speed'] * \
+                COMPONENTS['armor'][selected_parts['armor']]['speed_penalty']
+    draw_stat_bar("SPEED", current_speed, 0.24, 100, stats_y + 30)
+    
+    # DMG
+    dmg_val = COMPONENTS['barrels'][selected_parts['barrels']]['damage']
+    draw_stat_bar("DMG", dmg_val, 80, 100, stats_y+60)
+
+    # Sight Range
+    range_val = COMPONENTS['sights'][selected_parts['sights']]['range']
+    draw_stat_bar("RANGE", range_val, 20, 400, stats_y)
+
+    reload_time = COMPONENTS['barrels'][selected_parts['barrels']]['reload']
+    fire_rate = 1.0 / reload_time 
+    draw_stat_bar("RELOAD", fire_rate, 1, 400, stats_y + 30)
+
+def _get_gradient(percentage):
+    # This gives you a gradient from red to green
+    # Uses LERP, You know how it works
+
+    red = int(255 * (1 - percentage))
+    green = int(255 * percentage)
+    blue = 0
+
+    return (red, green, blue)
+
+def draw_stat_bar(label, value, max_value, x, y):
+
+    pct = value / max_value
+    bar_color = _get_gradient(pct)
+
+    font = pygame.font.SysFont(None, 35)
+    text = font.render(label, True, (200,200,200))
+    screen.blit(text, (x,y))
+
+    pygame.draw.rect(screen, (50,50,50), (x+120, y, 150, 15))
+    fill_width = (value/max_value) * 150
+    pygame.draw.rect(screen, bar_color, (x + 120, y, fill_width, 15))
+    pygame.draw.rect(screen, (200, 200, 200), (x+120, y, 150, 15), 1)
 
 def draw_instructions():
     screen.fill((30, 30, 30))
@@ -338,11 +409,12 @@ def run_client():
                     active_keys = []
                     my_parts = parts_registry[str_id]
                     track_name = my_parts["tracks"]
-                    
+                    armor_name = my_parts["armor"]                
+    
                     stats = COMPONENTS["tracks"][track_name]
-                    current_move_speed = stats["speed"]
-                    
-
+                    speed_penalty = COMPONENTS["armor"][armor_name]["speed_penalty"]
+                    current_move_speed = stats["speed"] * speed_penalty
+        
                     grid_x, grid_y = int(smooth_positions[my_id][0]), int(smooth_positions[my_id][1])
                     speed_multiplier = 1.0
 

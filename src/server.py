@@ -281,7 +281,15 @@ def updateBulletPos():
         if 0 <= new_x <= MAP_WIDTH and 0 <= new_y <= MAP_HEIGHT:
             if tilemap[grid_y][grid_x] == 5:
                 print(f"[COMBAT] Shell {shell.id} hit a wall")
-                continue
+                if shell.shell_type == "Ricochet Barrel":
+                # Current bugs: bullets can be shot inside walls and at specific angles can be stuck inside them until they bounce out
+                    if abs(grid_x - math.floor(curr_x)) >= 1:
+                        vx = vx * -1
+                    elif abs(grid_y - math.floor(curr_y)) >= 1:
+                        vy = vy * -1
+                    shell.velocity = vx, vy
+                else:
+                    continue
             shell.position = (new_x,new_y)
             remaining_shells.append(shell)
         else:

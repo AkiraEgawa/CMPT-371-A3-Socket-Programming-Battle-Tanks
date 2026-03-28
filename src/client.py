@@ -66,7 +66,7 @@ selected_parts = {
     "tracks": "Heavy Tracks",
     "armor": "Heavy Armor",
     "sights": "Standard Sight",
-    "barrels": "Standard Barrel"
+    "barrels": "Ricochet Barrel"
 }
 
 with open(BASE_DIR / "config" / "tankComponents.json") as f:

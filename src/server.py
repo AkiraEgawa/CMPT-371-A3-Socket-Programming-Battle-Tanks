@@ -20,6 +20,8 @@ tankComponents_path = BASE_DIR / "config" / "tankComponents.json"
 with open(tankComponents_path) as f:
     COMPONENTS = json.load(f)
 
+MAX_BOUNCES = 2
+
 config_path = BASE_DIR / "config" / "config.json"
 
 with open(config_path) as f:
@@ -283,7 +285,7 @@ def updateBulletPos():
         if 0 <= new_x <= MAP_WIDTH and 0 <= new_y <= MAP_HEIGHT:
             if tilemap[grid_y][grid_x] == 5:
                 print(f"[COMBAT] Shell {shell.id} hit a wall")
-                if shell.shell_type == "Ricochet Barrel" and shell.bounceTimes < 2:
+                if shell.shell_type == "Ricochet Barrel" and shell.bounceTimes < MAX_BOUNCES:
                     # Current bugs: bullets can be shot inside walls and at specific angles can be stuck inside them until they bounce out
                     if abs(grid_x - math.floor(curr_x)) >= 1:
                         vx = vx * -1

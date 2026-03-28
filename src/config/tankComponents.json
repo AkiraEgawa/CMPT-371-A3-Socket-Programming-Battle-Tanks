@@ -44,6 +44,13 @@
       "bullet_lifetime": 180,
       "reload": 2.5,
       "special": "hits hard"
+    },
+    "Ricochet Barrel": {
+      "damage": 80,
+      "bullet_speed": 0.2,
+      "bullet_lifetime": 180,
+      "reload": 1.5,
+      "special": "bullets bounce"
     }
   }
 }

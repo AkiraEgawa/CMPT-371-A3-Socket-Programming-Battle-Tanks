@@ -66,7 +66,7 @@ selected_parts = {
     "tracks": "Heavy Tracks",
     "armor": "Heavy Armor",
     "sights": "Standard Sight",
-    "barrels": "Standard Barrel"
+    "barrels": "Ricochet Barrel"
 }
 
 with open(BASE_DIR / "config" / "tankComponents.json") as f:
@@ -153,7 +153,7 @@ def draw_garage():
         for part_name in options.keys():
             if draw_button(part_name, x_offset, y_offset - 10, 200, 35, (70, 70, 70), (120, 120, 120)):
                 selected_parts[category] = part_name
-            x_offset += 210
+            x_offset += 100
         y_offset += 60
 
     if draw_button("BACK TO MENU", 300, 500, 200, 50, (100, 100, 100), (150, 150, 150)):

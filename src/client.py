@@ -436,7 +436,7 @@ def run_client():
                             target_port += event.unicode
 
             # Start Game Command
-            if current_ui_state == GAME and event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
+            if current_ui_state == GAME and event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN and not gameInProgress and not game_running:
                 if client:
                     client.send(json.dumps({"type": "START"}).encode())
 

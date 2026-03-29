@@ -442,6 +442,7 @@ def startGame():
             print(f"[ERROR] Failed to send start sync to Player {pid}: {e}")
 
 def handleClientConnection(conn, addr):
+    global game_started
     player_id = None
     buffer = "" # Add a buffer for this specific connection
     
@@ -491,9 +492,14 @@ def handleClientConnection(conn, addr):
                     if message["type"] == "CONNECT":
                         player_id = addPlayer(message["content"])
                         clients[player_id] = conn
-                        conn.send(json.dumps({"type": "ACCEPTED", "id": player_id}).encode())
+
+                        # if game hasn't started, accept them, else tell them to get lost
+                        if not game_started:
+                            conn.send(json.dumps({"type": "ACCEPTED", "id": player_id}).encode())
+                        elif game_started:
+                            conn.send(json.dumps({"type": "INPROGRESS"}).encode())
+
                     elif message["type"] == "START":
-                        global game_started
                         print("The game has started!")
                         if not game_started: startGame()
                     elif message["type"] == "ACTION":

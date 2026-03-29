@@ -74,6 +74,7 @@ with open(BASE_DIR / "config" / "tankComponents.json") as f:
 
 leavingGame = False
 victory = False
+gameInProgress = False
 
 mouse_already_pressed = False
 
@@ -365,7 +366,7 @@ def listen_to_server(client_socket):
             break
 
 def handle_message(message):
-    global world_state, local_map, my_id, game_running, parts_registry, current_ui_state, client_running, victory
+    global world_state, local_map, my_id, game_running, parts_registry, current_ui_state, client_running, victory, gameInProgress
 
     if message["type"] == "SERVER_SHUTDOWN":
         print("\n[TERMINATED] The server has shut down.")
@@ -378,6 +379,11 @@ def handle_message(message):
         print("You've been accepted")
         my_id = message["id"]
         print(f"Connected as Player {my_id}.")
+    elif message["type"] == "INPROGRESS":
+        print("Game is already in progress. Joining is not allowed")
+        gameInProgress = True
+        
+        print("Press ESC to leave")
     elif message["type"] == "GAME_START":
         print("Game is starting!")
         local_map = message["content"]["map"]
@@ -392,7 +398,7 @@ def handle_message(message):
             victory = True
 
 def run_client():
-    global local_map, client_running, current_ui_state, game_running, my_id, smooth_positions, parts_registry, selected_parts, target_ip, target_port, active_input, leavingGame, TILE_SIZE, VISIBLE_RADIUS
+    global local_map, client_running, current_ui_state, game_running, my_id, smooth_positions, parts_registry, selected_parts, target_ip, target_port, active_input, leavingGame, TILE_SIZE, VISIBLE_RADIUS, gameInProgress
     client = None
 
     while True:
@@ -404,6 +410,15 @@ def run_client():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
+            
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                if current_ui_state == GAME:
+                    current_ui_state = MENU
+                    gameInProgress = False
+                    if client:
+                        try:
+                            client.send(json.dumps({"type": "LEAVE"}).encode())
+                        except: pass
             
             # --- MY TYPING LOGIC ---
             if current_ui_state == MENU and active_input is not None:
@@ -530,19 +545,26 @@ def run_client():
                         try:
                             client.send(json.dumps({"type": "ACTION", "content": {"keys": active_keys}}).encode())
                         except: pass
-
+            
         pygame.display.flip()
         clock.tick(60)
 
 def draw_game():
-    global last_cam_pos, smooth_positions
+    global last_cam_pos, smooth_positions, gameInProgress
 
-    if not local_map or not game_running:
-        # Draw "Waiting" screen
-        font = pygame.font.SysFont(None, 48)
-        img = font.render('WAITING FOR GAME START...', True, (255, 255, 255))
-        screen.blit(img, (150, 250))
-        return
+    if (not local_map or not game_running):
+        if not gameInProgress:
+            # Draw "Waiting" screen
+            font = pygame.font.SysFont(None, 48)
+            img = font.render('WAITING FOR GAME START...', True, (255, 255, 255))
+            screen.blit(img, (150, 250))
+            return
+        if gameInProgress:
+            # Tell user to get lost
+            font = pygame.font.SysFont(None, 48)
+            img = font.render('GAME IN PROGRESS: PRESS ESC TO LEAVE', True, (255, 255, 255))
+            screen.blit(img, (50, 250))
+            return
 
     # --- 1. UPDATE SMOOTH POSITIONS (LERP) ---
     # We do this for ALL players before drawing anything

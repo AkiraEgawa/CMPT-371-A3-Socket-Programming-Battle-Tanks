@@ -170,7 +170,7 @@ def get_normalized_total_reload():
     return floor + (raw_score * (1.0 - floor))
 
 def draw_garage():
-    global selected_parts, VISIBLE_RADIUS, TILE_SIZE
+    global selected_parts
     screen.fill((30, 30, 30))
     
     y_offset = 150
@@ -204,8 +204,6 @@ def draw_garage():
         y_offset += 70
 
     if draw_button("BACK TO MENU", 300, 550, 200, 50, (100, 100, 100), (150, 150, 150)):
-        VISIBLE_RADIUS = COMPONENTS["sights"][selected_parts["sights"]]["range"]
-        TILE_SIZE = 50 / (VISIBLE_RADIUS) * 8
         return "GO_MENU"
     
     # I need to draw multiple stat bars
@@ -300,33 +298,7 @@ def draw_stat_bar(label, value, max_value, x, y):
     # border
     pygame.draw.rect(screen, (200, 200, 200), (x + 120, y, 150, 15), 1)
 
-"""
-def draw_stat_bar(label, value, max_value, x, y):
 
-    pct = value / max_value
-    bar_color = _get_gradient(pct)
-
-    font = pygame.font.SysFont(None, 35)
-    text = font.render(label, True, (200,200,200))
-    screen.blit(text, (x,y))
-    fill_width = (pct) * 150
-    if pct > 1:
-        bar_color = (0,255,255)
-    if pct > 1.2:
-        bar_color = (255, 0, 255)
-        pct = 1.21
-        draw_broken_bar(screen, bar_color, x+120, y, fill_width, 15)
-        for _ in range(5):
-            sx = x + fill_width + random.randint(-5, 15)
-            sy = y + random.randint(0, 15)
-            pygame.draw.rect(screen, (255, 255, 255), (sx, sy, 2, 2))
-
-
-    pygame.draw.rect(screen, (50,50,50), (x+120, y, 150, 15))
-    
-    pygame.draw.rect(screen, bar_color, (x + 120, y, fill_width, 15))
-    pygame.draw.rect(screen, (200, 200, 200), (x+120, y, 150, 15), 1)
-"""
 def draw_instructions():
     screen.fill((30, 30, 30))
 
@@ -420,7 +392,7 @@ def handle_message(message):
             victory = True
 
 def run_client():
-    global local_map, client_running, current_ui_state, game_running, my_id, smooth_positions, parts_registry, selected_parts, target_ip, target_port, active_input, leavingGame
+    global local_map, client_running, current_ui_state, game_running, my_id, smooth_positions, parts_registry, selected_parts, target_ip, target_port, active_input, leavingGame, TILE_SIZE, VISIBLE_RADIUS
     client = None
 
     while True:
@@ -470,6 +442,12 @@ def run_client():
                 parts_registry.clear()
                 client_running = True
                 leavingGame = False
+
+
+                sight_info = COMPONENTS["sights"][selected_parts["sights"]]
+                VISIBLE_RADIUS = sight_info["range"]
+                TILE_SIZE = 50 / VISIBLE_RADIUS * 8
+
                 try:
                     p = int(target_port)
                     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

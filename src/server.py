@@ -345,10 +345,6 @@ def removePlayer(pid):
         print(f"[SERVER] Zero players remaining. Initializing auto-shutdown...")
         shutdown_event.set()
 
-def updatePlayerPos():
-    # player position needs to update based on actions
-    pass
-
 def applyPlayerAction(player_id: int, action: dict):
     player = active_players.get(player_id)
     static_data = parts_registry.get(player_id)
@@ -401,15 +397,6 @@ def applyPlayerAction(player_id: int, action: dict):
 
     if "SPACE" in keys:
         spawnBullet(player_id)
-
-# These are the networking functions
-def broadcastMessage():
-    # send entity info to all clients
-    pass
-
-def parseMessage():
-    # if type == action, add it to the list
-    pass
 
 def findSafeSpawn(tilemap):
     """
@@ -530,9 +517,6 @@ def handleClientConnection(conn, addr):
 
 
 # These are the commands for general game loop on main thread
-def processActions():
-    # processes actions in a queue style
-    pass
 
 def gameLoop():
     global server_running

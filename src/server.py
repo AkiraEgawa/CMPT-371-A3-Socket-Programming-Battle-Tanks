@@ -668,27 +668,7 @@ def get_local_ip():
 
 if __name__ == "__main__":
     try:
-        input_host = input(f"Enter Host IP (default {HOST}): ").strip()
-        if input_host:
-            # is user stupid
-            if "." in input_host or input_host == "localhost":
-                HOST = input_host
-            else:
-                print("[!] Invalid IP format. Falling back to 0.0.0.0")
-                HOST = "0.0.0.0"
-            
-        input_port = input(f"Enter Port (default {PORT}): ").strip()
-        if input_port:
-            p = int(input_port)
-            if 1024 <= p <= 65535:
-                PORT = p
-            else:
-                print("[!] Port out of range (1024-65535). Falling back to 5050")
-        
         startServer()
-    except ValueError:
-        print("[ERROR] Port must be a number!")
-    
     except KeyboardInterrupt:
         print("\nUser has attempted to kill server")
         sys.exit()

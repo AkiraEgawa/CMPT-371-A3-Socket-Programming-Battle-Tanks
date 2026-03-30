@@ -24,7 +24,7 @@ As required by the project specifications, we have identified and handled (or de
 * **TCP Stream Buffering**
     * *Solution:* TCP is a continuous byte stream, so not everything arrives at once, and some messages can be mashed together if sent too fast. As such, we implemented a fix on both client and server end by just using bracket-counting to seperate the messages.
         * *Bracket-Counting:* Essentially, every open bracket adds 1 to the bracket count, and every closed bracket subtracts one. Upon hitting a closed bracket, we check if the count is 0. If it is, then we've reached a full message and pop it out to process.
-* **Input Validation & Security*
+* **Input Validation & Security**
     * *Limitation:* The client side uses many try/excepts enclosed within each other to capture every possible error. As we don't trust users to not intercept packets and send fake results over, all math is done of server side. However, malicious users can still intercept the message and delete the content, as .get() can not retrieve a NoneType.
 * **Victory Checks**
     * *Limitation:* Our victory check works by checking if there's only one player left after a player death or a player disconnecting either by using ESC or by using a system interrupt to forcefully shut down their client. However, a crash can still occur if a player manages to leave between the check of len(active_players) == 1 succeeding and the victory message being sent out. This however, should also not be a major issue, as with the last player leaving the server, the server should close either way

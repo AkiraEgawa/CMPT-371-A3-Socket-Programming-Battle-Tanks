@@ -9,11 +9,11 @@
 | Name | Student ID | Email |
 | :---- | :---- | :---- |
 | Lucian Chen | 301588981 | lca193@sfu.ca |
-| Tristan Liu | 301567578 | tristan_liu@sfu.ca |
+| Tristan Liu | 301567578 | mla431@sfu.ca |
 
 ## **1\. Project Overview & Description**
 
-This project is a multplayer tank battle game, where users can build their own tanks and participate in a battle royale style battle using Python's Socket API (TCP). Players can all join the same lobby then start the game, fighting against each other in real time with tanks they customize beforehand. The server handles the game logic, game state calculations, and damage checks to prevent cheating. This renders the client essentially as a glorified television, in which I implemented LERP (Linear Interpolation), and client-side prediction in order for a smoother experience for the player.
+This project is a multplayer tank battle game, where users can build their own tanks and participate in a battle royale style battle using Python's Socket API (TCP). Players can all join the same lobby then start the game, fighting against each other in real time with tanks they customize beforehand. The server handles the game logic, game state calculations, and damage checks to prevent cheating. Additionally, LERP (Linear Interpolation) and client-side prediction has been implemented in order for a smoother experience for the player.
 
 ## **2\. System Limitations & Edge Cases**
 As required by the project specifications, we have identified and handled (or defined) the following limitations and potential issues within our application scope:
@@ -27,9 +27,9 @@ As required by the project specifications, we have identified and handled (or de
 * **Input Validation & Security**
     * *Limitation:* The client side uses many try/excepts enclosed within each other to capture every possible error. As we don't trust users to not intercept packets and send fake results over, all math is done of server side. However, malicious users can still intercept the message and delete the content, as .get() can not retrieve a NoneType.
 * **Victory Checks**
-    * *Limitation:* Our victory check works by checking if there's only one player left after a player death or a player disconnecting either by using ESC or by using a system interrupt to forcefully shut down their client. However, a crash can still occur if a player manages to leave between the check of len(active_players) == 1 succeeding and the victory message being sent out. This however, should also not be a major issue, as with the last player leaving the server, the server should close either way
+    * *Limitation:* Our victory check works by checking if there's only one player left after a player death or a player disconnecting either by using ESC or by using a system interrupt to forcefully shut down their client. However, a crash can still occur if a player manages to leave between the check of len(active_players) == 1 succeeding and the victory message being sent out. This however, should also not be a major issue, as with the last player leaving the server, the server should close either way.
 * **Bad Join Times**
-    * As this is a battle royale and we don't want people to just rejoin the server after dying to cheese their death, we have made it impossible to join the game after the game has started. As such, when a player connects to a running server, they will be prompted to press ESC to leave
+    * As this is a battle royale and we don't want people to just rejoin the server after dying, we have made it impossible to join the game after the game has started. As such, when a player connects to a running server, they will be prompted to press ESC to leave.
 
 ## **3\. Video Demo**
 [**TODO**]
@@ -78,34 +78,34 @@ python src/client.py
 
 ### **Step 3: Building Your Tanks**
 
-This step is not neccesary, if you don't customize your tanks, you will be loaded into the match with standard gear.
+This step is not neccesary because if you don't customize your tanks, you will be loaded into the match with standard gear.
 
-1. Press the most bottom gray button labeled "BUILD TANK"
-2. Within, you will see the sections of Tracks, Armor, Sights, and Barrels
-3. Choose your parts in a carousel style by clicking the left and right arrows next to the part names
-4. You can see your stats via the stat bars implemented on the bottom (Blue and Purple are special colours)
-5. Once you are satisfied with your tank, press the button labeled "BACK TO MENU"
+1. Press the "BUILD TANK" build tank button to move to the tank builder screen.
+2. Within, you will see the sections of Tracks, Armor, Sights, and Barrels.
+3. Choose your parts in a carousel style by clicking the left and right arrows next to the part names.
+4. You can see your stats via the stat bars implemented on the bottom (Blue and Purple are special colours).
+5. Once you are satisfied with your tank, press the button labeled "BACK TO MENU".
 
 ### **Step 4: Joining the Server**
 
 1. If you are on the same machine as the server, just press "JOIN SERVER". 
-    a) If the server is not running at this point, an error message will appear: Connection failed: [WinError 10061] No connection could be made because the target machine actively refused it
-2. If you are on another machine on LAN, input the IP given to you by the server in the IP box then press "JOIN SERVER"
+    a) If the server is not running at this point, an error message will appear: Connection failed: [WinError 10061] No connection could be made because the target machine actively refused it.
+2. If you are on another machine on LAN, input the IP given to you by the server in the IP box then press "JOIN SERVER".
 
 ### **Step 5: Gameplay**
 
 1. To start the game, press the ENTER key on your keyboard, no other players can join after this, so make sure to complete Step 4 from above for all clients before this step.
-2. To move a tank forward, press W. To move it backwards relative to its rotation, press S.
-3. To turn a tank, press counter clockwise and clockwise respectively.
-4. To shoot a shell, press SPACEBAR (There is a delay between each shot to make sure players can't just spam bullets everywhere)
-5. The terrain type and effects are as follow
-    a) Black: Stone, it stops bullets and the player, you can not go through it
-    b) Brown: Mud, it slows you down a bit
-    c) Blue: Water, it halves your movement speed
-    d) Green: Grass, no effect
-    e) Grey: Gravel, no effect
-6. Go around the map and find other players to shoot them until they poof out of existence. Dead clients get a "GAME OVER" screen, last player standing gets a "VICTORY" screen.
-7. If you entered by yourself or just want to give up, press ESC to leave the match. The server will be closed if there are no players left
+2. To move a tank forward, press W. To move it backwards, press S.
+3. To turn a tank, press A to turn counter clockwise and press D to turn clockwise respectively.
+4. To shoot a bullet, press SPACEBAR (There is a delay between each shot to make sure players can't just spam bullets everywhere).
+5. The terrain type and effects are as follow:
+    a) Black: Stone, it stops bullets and blocks players from going through it.
+    b) Brown: Mud, it lowers a player's movement speed a bit.
+    c) Blue: Water, it halves a player's movement speed.
+    d) Green: Grass, no effect.
+    e) Grey: Gravel, no effect.
+6. Go around the map and find other players to shoot them until they poof out of existence. Dead players will get a "GAME OVER" screen, while the last player standing gets a "VICTORY" screen.
+7. If you entered by yourself or just want to give up, press ESC to leave the match. The server will be closed if there are no players left.
 
 ## **5\. Technical Protocol Details (JSON over TCP)**
 
@@ -136,9 +136,9 @@ We designed a custom application layer protocol for data exchange using JSON ove
 
 ## **6\. Academic Integrity and References**
 * **Code Origin:**
-    * Code was written by me. I just mentally transferred my CMPT 201 Assignment 11 Code from C into Python by removing all the complicated stuff for the base of the server. I had written the CMPT 201 Assignment without AI assistance, so the transfer was simple.
+    * Most code was written without AI. The base of the server was adapted from CMPT 201 Assignment 11 Code from C into Python.
 * **GenAI Usage:**
-    * I used Gemini AI to assist in drawing the map and player characters as I am unfamiliar with how to draw using pygame.
+    * Gemini AI was used to assist in drawing the map and player characters using pygame.
 * **References**
     * [Pygame Documentation](https://www.pygame.org/docs/)
-    * All other python knowledge came from CMPT 120 and random hackathon projects I have done
+    * All other Python knowledge came from CMPT 120 and random hackathon projects.

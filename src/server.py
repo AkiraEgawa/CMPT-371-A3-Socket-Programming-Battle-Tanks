@@ -344,6 +344,25 @@ def removePlayer(pid):
     if len(active_players) == 0:
         print(f"[SERVER] Zero players remaining. Initializing auto-shutdown...")
         shutdown_event.set()
+    
+    if len(active_players) == 1:
+        winner = next(iter(active_players))
+        print(f"[VICTORY] Player {winner} has won!")
+
+        # Send out message to all players
+        victory_message = {
+            "type": "VICTORY",
+            "content": {
+                "id": winner
+            }
+        }
+        message_bytes = json.dumps(victory_message).encode('utf-8')
+        for pid, conn in clients.items():
+            try:
+                conn.send(message_bytes)
+            except Exception as e:
+                print(f"[ERROR] Failed to send start sync to Player {pid}: {e}")
+
 
 def applyPlayerAction(player_id: int, action: dict):
     player = active_players.get(player_id)

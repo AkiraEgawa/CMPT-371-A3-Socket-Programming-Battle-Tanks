@@ -10,34 +10,55 @@ from dataclasses import dataclass, field, asdict
 from typing import List, Tuple
 import sys
 
+"""To ensure code can run from anywhere, we will get the base directory here. This is the new ./"""
 BASE_DIR = Path(__file__).resolve().parent
 
+"""Host of 0.0.0.0 and Port 5050 for standard connection"""
 HOST = '0.0.0.0'
 PORT = 5050
 
+# Our file paths
 tankComponents_path = BASE_DIR / "config" / "tankComponents.json"
+config_path = BASE_DIR / "config" / "config.json"
 
+# Open our files so we can read in the future
 with open(tankComponents_path) as f:
     COMPONENTS = json.load(f)
 
-MAX_BOUNCES = 2
-
-config_path = BASE_DIR / "config" / "config.json"
-
 with open(config_path) as f:
     config = json.load(f)
+
+# Read config to get our global variables
 TICK_SPEED = config["settings"]["tick_speed"]
 TICK_DELAY = 1/TICK_SPEED
 
 MAP_HEIGHT = config["settings"]["MAX_HEIGHT"]
 MAP_WIDTH = config["settings"]["MAX_WIDTH"]
+MAX_BOUNCES = config["settings"]["MAX_BOUNCES"]
 
+
+"""
+OUR GLOBAL VARIABLES
+"""
+
+# Game variables
 last_shot_time = {} # {player_id: timestamp}
+tilemap = []
+parts_registry = {} # {player_id: PlayerParts} Sent at start
+active_players = {} # {player_id: Player} Sent every tick
+world_shells = [] # list of shells
 
+# Game control
+shutdown_event = threading.Event()
+game_started = False
 server_running = True
 
-tilemap = []
+# For counting players
+_player_id_counter = 0
+_id_lock = threading.Lock()
 
+# All of the important dataclasses we'll be sending
+# Basically, these are structs we'll be using
 @dataclass
 class TankParts:
     tracks: str
@@ -72,18 +93,10 @@ class EntityList:
 
 
 
-parts_registry = {} # {player_id: PlayerParts} Sent at start
-active_players = {} # {player_id: Player} Sent every tick
-world_shells = [] # list of shells
-
-shutdown_event = threading.Event()
-
-game_started = False
-
+"""
+FUNCTIONS START HERE
+"""
 # Utility
-
-_player_id_counter = 0
-_id_lock = threading.Lock()
 def generatePlayerID():
     # gives uniquePlayerID
     global _player_id_counter
@@ -97,12 +110,13 @@ def initializeMap(width, height):
     num_tiles = config.get("num_tiles", 5)
     tilemap = [[random.randint(1, num_tiles) for _ in range(width)] for _ in range(height)]
 
-    # smoothing (This is why I hate stats)
+    # 3 times is a good amount (based on feels and stats)
     for _ in range(3):
+        # initialize a blank slate
         new_map = [row[:] for row in tilemap]
         for y in range(1, height - 1):
             for x in range(1, width - 1):
-                # Count neighbors
+                # Count neighbors and add them to a temporary map
                 neighbors = []
                 for dy in [-1, 0, 1]:
                     for dx in [-1, 0, 1]:
@@ -226,22 +240,22 @@ def spawnBullet(player_id: int):
     # handles the shoot action from clients, spawns in a bullet
     last_time = last_shot_time.get(player_id, 0)
     
+    # error handling, if players don't exist
     player = active_players.get(player_id)
     static_data = parts_registry.get(player_id)
     if not player:
         return
     
+    # Grab our parts and the stats
     sight_type = static_data.parts.sights
     barrel_type = static_data.parts.barrels
     barrel_stats = COMPONENTS["barrels"][barrel_type]
     sight_stats = COMPONENTS["sights"][sight_type]
     SHOOT_COOLDOWN = barrel_stats["reload"] * sight_stats["reload_penalty"]
+    BULLET_SPEED = barrel_stats["bullet_speed"]
 
     if current_time - last_time < SHOOT_COOLDOWN:
         return
-
-
-    BULLET_SPEED = barrel_stats["bullet_speed"]
 
     rad = math.radians(player.rotation)
     vx = math.cos(rad) * BULLET_SPEED
@@ -268,6 +282,7 @@ def spawnBullet(player_id: int):
 
     last_shot_time[player_id] = current_time
 
+# Updates the bullet positions (Use this every tick)
 def updateBulletPos():
     global world_shells, tilemap
     remaining_shells = []

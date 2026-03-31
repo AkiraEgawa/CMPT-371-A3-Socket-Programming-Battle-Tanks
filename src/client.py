@@ -18,20 +18,25 @@ class TankParts:
 
 BASE_DIR = Path(__file__).resolve().parent
 
+# Define our paths
 config_path = BASE_DIR / "config" / "config.json"
+components_path = BASE_DIR / "config" / "tankComponents.json"
+
+# Open both files
 with open(config_path) as f:
     config = json.load(f)
+with open(components_path) as f:
+    COMPONENTS = json.load(f)
 
 MAP_WIDTH = config["settings"]["MAX_WIDTH"]
 MAP_HEIGHT = config["settings"]["MAX_HEIGHT"]
 
-HOST = '127.0.0.1'
-PORT = 5050
-
+# Default IP is loopback
 target_ip = "127.0.0.1"
 target_port = "5050"
 active_input = None
 
+# Initialize our stuff properly
 pygame.init()
 SCREEN_WIDTH, SCREEN_HEIGHT = 800, 600
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -47,10 +52,9 @@ VISIBLE_RADIUS = 8
 TILE_SIZE = 50
 smooth_positions = {}
 
-
-
 parts_registry = {}
 
+# For controlling the UI
 MENU = "menu"
 GARAGE = "garage"
 GAME = "game"
@@ -62,15 +66,13 @@ last_cam_pos = [0,0]
 
 client_running = True
 
+# This is our standard loadout in case players don't go to the Garage
 selected_parts = {
     "tracks": "Standard Tracks",
     "armor": "Standard Armor",
     "sights": "Standard Sight",
     "barrels": "Standard Barrel"
 }
-
-with open(BASE_DIR / "config" / "tankComponents.json") as f:
-    COMPONENTS = json.load(f)
 
 leavingGame = False
 victory = False
@@ -325,11 +327,14 @@ def listen_to_server(client_socket):
 
     while client_running:
         try:
+            # Read in the chunk
             chunk = client_socket.recv(8192).decode('utf-8')
             if not chunk: break
 
             buffer += chunk
 
+            # We do bracket counting
+            # Open bracket is plus 1, close bracket is -1. if we reach 0 on a closed bracket, we've reached the end of the message
             while "{" in buffer and "}" in buffer:
                 try:
                     start_index = buffer.find("{")
@@ -342,7 +347,7 @@ def listen_to_server(client_socket):
                             bracket_count += 1
                         elif buffer[i] == "}":
                             bracket_count -= 1
-
+                            # Message end reached, read it out
                             if bracket_count == 0:
                                 end_index = i+1
                                 break
@@ -366,38 +371,53 @@ def listen_to_server(client_socket):
             break
 
 def handle_message(message):
+    """
+    Handles messages from the server
+    """
     global world_state, local_map, my_id, game_running, parts_registry, current_ui_state, client_running, victory, gameInProgress
 
+    # Server is shutting down, kcik users out and reset variables to prevent issues
     if message["type"] == "SERVER_SHUTDOWN":
         print("\n[TERMINATED] The server has shut down.")
         client_running = False
         game_running = False
         current_ui_state = MENU
-
         my_id = None
+    
+    # If you've been accepted, figure your ID out
     elif message["type"] == "ACCEPTED":
         print("You've been accepted")
         my_id = message["id"]
         print(f"Connected as Player {my_id}.")
+    
+    # Client joined an in-progress game, tell them to leave
     elif message["type"] == "INPROGRESS":
         print("Game is already in progress. Joining is not allowed")
         gameInProgress = True
-        
         print("Press ESC to leave")
+    
+    # Game has been started, read the map and parts of all the players
     elif message["type"] == "GAME_START":
         print("Game is starting!")
         local_map = message["content"]["map"]
         parts_registry = message["content"]["registry"]
         game_running = True
         print(f"[CLIENT] Game started with {len(parts_registry)} players.")
+    
+    # This is the game update, just read the players and shells, let the other functions figure out what to do
     elif message["type"] == "UPDATE":
         world_state["players"] = message["players"]
         world_state["shells"] = message["shells"]
+    
+    # Somebody has won, if your ID is the ID in there, you are winner. otherwise, do nothing since you're dead
     elif message["type"] == "VICTORY":
         if my_id == message["content"]["id"]:
             victory = True
 
 def run_client():
+    """
+    The main function that handles the client
+    """
     global local_map, client_running, current_ui_state, game_running, my_id, smooth_positions, parts_registry, selected_parts, target_ip, target_port, active_input, leavingGame, TILE_SIZE, VISIBLE_RADIUS, gameInProgress
     client = None
 
@@ -458,12 +478,13 @@ def run_client():
                 client_running = True
                 leavingGame = False
 
-
+                # figure out what our seeing range is, 50 is a magic number, and 8 is standard size
                 sight_info = COMPONENTS["sights"][selected_parts["sights"]]
                 VISIBLE_RADIUS = sight_info["range"]
                 TILE_SIZE = 50 / VISIBLE_RADIUS * 8
 
                 try:
+                    # Try to connect. if you can't connect to server, it means server isn't working
                     p = int(target_port)
                     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                     client.settimeout(5.0)
@@ -477,7 +498,8 @@ def run_client():
                 except Exception as e:
                     print(f"Connection failed: {e}")
                     current_ui_state = MENU
-
+        
+        # Figure out what to draw, if it's one of the menu parts, draw it
         elif current_ui_state == GARAGE:
             action = draw_garage()
             if action == "GO_MENU":
@@ -487,7 +509,8 @@ def run_client():
             action = draw_instructions()
             if action == "GO_MENU":
                 current_ui_state = MENU
-
+        
+        # The big beefy part, the game has started
         elif current_ui_state == GAME:
             draw_game()
             
@@ -495,6 +518,7 @@ def run_client():
             if game_running and my_id in smooth_positions:
                 str_id = str(my_id)
                 if str_id in parts_registry:
+                    # Figure out your parts properly
                     active_keys = []
                     my_parts = parts_registry[str_id]
                     track_name = my_parts["tracks"]
@@ -507,6 +531,7 @@ def run_client():
                     grid_x, grid_y = int(smooth_positions[my_id][0]), int(smooth_positions[my_id][1])
                     speed_multiplier = 1.0
 
+                    # Define the land modifiers. This is used for client side prediction
                     if 0 <= grid_x < MAP_WIDTH and 0 <= grid_y < MAP_HEIGHT:
                         current_tile = local_map[grid_y][grid_x]
                         if current_tile == 4:  # Water
@@ -514,6 +539,7 @@ def run_client():
                         elif current_tile == 2: # Mud
                             speed_multiplier = 0.8  # 20% speed reduction
 
+                    # Keep track of player inputs to predict the client movement
                     move_speed = current_move_speed * speed_multiplier
                     move_dir = 0
                     if keys[pygame.K_w]: active_keys.append("W"); move_dir = 1
@@ -523,10 +549,12 @@ def run_client():
                     if keys[pygame.K_SPACE]: active_keys.append("SPACE")
                     if keys[pygame.K_ESCAPE]: leavingGame = True
 
+                    # If player is leaving, let them leave
                     if leavingGame:
                         current_ui_state = MENU
                         client.send(json.dumps({"type": "LEAVE"}).encode())
 
+                    # If they pressed either S or W, predict their future position based on their movement speed
                     if move_dir != 0:
                         me = next((p for p in world_state["players"] if p["id"] == my_id), None)
                         if me:

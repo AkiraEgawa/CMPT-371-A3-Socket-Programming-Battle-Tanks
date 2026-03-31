@@ -2,7 +2,8 @@
     "num_tiles": 5,
     "settings": {
         "tick_speed": 50,
-        "MAX_HEIGHT": 100,
-        "MAX_WIDTH": 80
+        "MAX_HEIGHT": 20,
+        "MAX_WIDTH": 20,
+        "MAX_BOUNCES": 2
     }
 }

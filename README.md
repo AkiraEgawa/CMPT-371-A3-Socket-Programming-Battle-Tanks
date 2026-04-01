@@ -115,7 +115,7 @@ We designed a custom application layer protocol for data exchange using JSON ove
     * content is optional for certain types such as INPROGRESS
 * **Handshake Phase:** 
     * Client sends: `{"type": "CONNECT", "content": selected_parts <another json>}`
-        * example: {
+        * example: `{
   "type": "CONNECT",
   "content": {
     "tracks": "Standard Tracks",
@@ -123,7 +123,7 @@ We designed a custom application layer protocol for data exchange using JSON ove
     "sights": "Standard Sight",
     "barrels": "Standard Barrel"
   }
-}
+}`
     * Server responds: `{"type": "ACCEPTED", "id": player_id <int>}`
         * example: {"type": "ACCEPTED", "id": 1}
         * both selected_parts and player_id are variables

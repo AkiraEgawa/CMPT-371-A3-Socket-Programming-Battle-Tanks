@@ -32,7 +32,8 @@ As required by the project specifications, we have identified and handled (or de
     * As this is a battle royale and we don't want people to just rejoin the server after dying, we have made it impossible to join the game after the game has started. As such, when a player connects to a running server, they will be prompted to press ESC to leave.
 
 ## **3\. Video Demo**
-[**TODO**]
+Our 2-minute video demonstration convering connection establishment, data exchange, gameplay, and process termination can be viewed below.
+[**▶️ Watch Project Demo on YouTube**](https://youtu.be/QQZtqRY-Gts)
 
 ## **4\. Prerequisites (Fresh Environment)**
 
